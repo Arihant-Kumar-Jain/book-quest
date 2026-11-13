@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+:root{
+  --ink:#070b14; --panel:rgba(13,18,31,.94); --panel-2:rgba(22,29,46,.96); --line:rgba(230,192,104,.20); --line-2:rgba(255,255,255,.08);
+  --text:#efe6d2; --muted:#a3abbd; --dim:#6c7588;
+  --gold:#e6c068; --gold-2:#f6dc93; --xp:#f3c74b; --teal:#5fd4c0; --green:#73d39a; --red:#ef6a5f; --ice:#9cd3ff; --violet:#b69cff;
+  --display:"Cinzel", Georgia, "Times New Roman", serif;
+  --ui:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+  --r:14px; --shadow:0 12px 40px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--ink);color:var(--text);font-family:var(--ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+#map{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+#map.dragging{cursor:grabbing}
+
+/* ── SVG world ── */
+.node{cursor:pointer}
+.lbl-name{font-family:var(--display);font-weight:700;font-size:19px;fill:var(--text);letter-spacing:.04em}
+.lbl-bg{fill:rgba(9,13,24,.82);stroke:var(--line);stroke-width:1.5}
+.ch .num{font-family:var(--display);font-weight:900;font-size:58px;fill:var(--text);text-anchor:middle}
+.ch .disc{fill:#121a2b;stroke:#3a4458;stroke-width:4}
+.ch .ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:10}
+.ch .ring{fill:none;stroke:var(--gold);stroke-width:10;stroke-linecap:round}
+.ch.cleared .disc{fill:#2b2414;stroke:var(--gold)}
+.ch.cleared .num{fill:var(--gold-2)}
+.ch.active .disc{stroke:var(--teal)}
+.ch.current .disc{stroke:var(--teal);stroke-width:6}
+.ch.fog .num{fill:#8792a6}
+.ch.optional .disc{stroke-dasharray:10 8}
+.node:hover>.disc,.node.sel>.disc{stroke:#fff}
+.node.sel>.selring{display:block}
+.selring{display:none;fill:none;stroke:#fff;stroke-width:3;stroke-dasharray:6 8;animation:spin 14s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.crown{fill:var(--gold)}
+.q .body{fill:#141c2e;stroke:#8a7a4f;stroke-width:3}
+.q.done .body{fill:var(--gold);stroke:#fff6d8}
+.q.opt .body{stroke-dasharray:4 4}
+.q .chk{fill:none;stroke:#2a210c;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.x .body{fill:#141c2e;stroke:#3fa596;stroke-width:3}
+.x.done .body{fill:var(--teal);stroke:#e2fffa}
+.x.clean .body{stroke:var(--gold-2);stroke-width:4}
+.x .pip{fill:#c9b88a}
+.x.done .pip{fill:var(--teal)}
+.q:hover>.body,.x:hover>.body,.q.sel>.body,.x.sel>.body{stroke:#fff;stroke-width:4}
+.qlbl{font-family:var(--mono);font-size:11px;fill:var(--muted);text-anchor:middle;display:none}
+.orbit{fill:none;stroke:rgba(230,192,104,.18);stroke-width:2;stroke-dasharray:3 9}
+#map:not(.znear) .qring{display:none}
+#map.zfar .lbl{display:none}
+#map.zclose .qlbl{display:block}
+.boss .crest{fill:#2a1416;stroke:#7b3a36;stroke-width:4}
+.boss .horn{fill:#5a2a27;stroke:#7b3a36;stroke-width:3}
+.boss .bnum{font-family:var(--display);font-weight:900;font-size:40px;fill:#f2b9a8;text-anchor:middle}
+.boss.ready .crest{fill:#3d1416;stroke:var(--red)}
+.boss.ready .horn{fill:#7a2a24;stroke:var(--red)}
+.boss.dead .crest{fill:#1d1c22;stroke:#55505c}
+.boss.dead .horn{fill:#2b2a30;stroke:#55505c}
+.boss.dead .bnum{fill:#77707e}
+.boss.locked .bnum{fill:#9a7f7a}
+.boss .slash{stroke:var(--gold);stroke-width:7;stroke-linecap:round}
+.boss .lock{fill:#c9b9a6}
+.boss .lbl-bg{stroke:rgba(239,106,95,.35)}
+.pulse{animation:pulse 2.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes pulse{0%,100%{opacity:.35;transform:scale(.92)}50%{opacity:.8;transform:scale(1.06)}}
+.fog ellipse{pointer-events:none}
+.road-base{fill:none;stroke:#1b1a17;stroke-width:26;stroke-linecap:round;stroke-linejoin:round;opacity:.55}
+.road-ahead{fill:none;stroke:#7d8494;stroke-width:6;stroke-linecap:round;stroke-dasharray:2 18}
+.road-done{fill:none;stroke:var(--gold);stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+.marker{animation:bob 2.4s ease-in-out infinite}
+#L-top{transition:opacity .3s}
+#map.znear #L-top{opacity:0}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+.region{font-family:var(--display);font-weight:700;fill:rgba(239,230,210,.16);text-anchor:middle;letter-spacing:.32em}
+.star .core{fill:#c9d2ea}
+.star.lit .core{fill:#fff6d6}
+.star.opt .core{fill:#7d879e}
+.star:hover>.core,.star.sel>.core{fill:#fff}
+.cline{stroke:rgba(170,186,230,.22);stroke-width:2}
+.cline.lit{stroke:rgba(246,220,147,.75);stroke-width:3}
+.book .core{fill:#20294a;stroke:#b6c3ff;stroke-width:3}
+.book.done .core{fill:#4a3a12;stroke:var(--gold-2)}
+.book .init{font-family:var(--display);font-weight:900;font-size:22px;fill:#e6ecff;text-anchor:middle}
+.skytitle{font-family:var(--display);font-weight:700;font-size:44px;fill:#dfe6ff;text-anchor:middle;letter-spacing:.12em}
+.skysub{font-family:var(--ui);font-size:22px;fill:#97a3c7;text-anchor:middle;letter-spacing:.06em}
+.lab .body{fill:#2b2350;stroke:var(--violet);stroke-width:2.5}
+.lab.done .body{fill:var(--violet);stroke:#efe8ff}
+.twinkle{animation:tw 3.2s ease-in-out infinite}
+@keyframes tw{0%,100%{opacity:.25}50%{opacity:1}}
+
+/* ── HUD ── */
+.hud{position:fixed;z-index:10;display:flex;gap:10px;align-items:center;pointer-events:none}
+.hud>*{pointer-events:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#hud-l{top:16px;left:16px;padding:10px 16px 10px 10px;gap:12px;width:min(360px,calc(100vw - 32px))}
+.lvl{position:relative;width:54px;height:60px;flex:none}
+.lvl svg{width:100%;height:100%}
+.lvl span{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:900;font-size:22px;color:#2a210c;padding-top:2px}
+.lvl-info{flex:1;min-width:0}
+.lvl-title{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xpbar{height:10px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:7px 0 5px;border:1px solid rgba(255,255,255,.06)}
+.xpbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c98d2b,var(--xp),#fff1b8);border-radius:99px;transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.xp-meta{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.xp-meta span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hud-c{top:16px;left:50%;transform:translateX(-50%)}
+.pill{display:flex;align-items:center;gap:7px;padding:8px 13px;background:var(--panel);border:1px solid var(--line-2);border-radius:99px;box-shadow:var(--shadow);font-size:13px;white-space:nowrap}
+.pill b{font-variant-numeric:tabular-nums;font-size:14px}
+.pill span{color:var(--muted);font-size:12px}
+.pill.risk{border-color:rgba(243,199,75,.6)}
+.pill svg{width:20px;height:20px}
+#hud-r{top:16px;right:16px}
+.ib{width:40px;height:40px;border-radius:12px;background:var(--panel);border:1px solid var(--line-2);display:grid;place-items:center;font-size:17px;position:relative;box-shadow:var(--shadow);transition:transform .12s,border-color .12s}
+.ib:hover{border-color:var(--gold);transform:translateY(-1px)}
+.ib .live{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:#6c7588}
+.ib .live.on{background:var(--teal);box-shadow:0 0 8px var(--teal)}
+body.remote .local-only{display:none!important}
+.ib small{position:absolute;bottom:-6px;right:-6px;background:var(--gold);color:#241c08;font-weight:700;font-size:10px;border-radius:99px;padding:1px 5px}
+.focus{height:40px;padding:0 15px;border-radius:12px;border:1px solid rgba(95,212,192,.5);background:rgba(20,48,48,.9);font-weight:600;font-size:13.5px;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.focus.on{border-color:var(--red);background:rgba(58,20,22,.92)}
+.focus .dot{width:8px;height:8px;border-radius:50%;background:var(--teal)}
+.focus.on .dot{background:var(--red);animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.25}}
+
+/* minimap + zoom */
+#mini{position:fixed;left:16px;bottom:16px;z-index:10;padding:6px;border-radius:12px}
+#mini canvas{display:block;width:232px;height:146px;border-radius:8px;cursor:crosshair}
+#zoom{position:fixed;left:270px;bottom:16px;z-index:10;display:flex;flex-direction:column;gap:6px}
+#zoom .ib{font-size:18px}
+
+/* next-up bar */
+#next{position:fixed;bottom:16px;left:326px;right:16px;z-index:9;display:flex;justify-content:center;gap:10px;pointer-events:none;transition:right .25s}
+body.panel-open #next{right:428px}
+@media (max-width:1440px){body.panel-open #next{display:none}}
+.nb{pointer-events:auto;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 14px;max-width:420px;min-width:0}
+.nb-txt{min-width:0}
+.nb-k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.nb-t{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nb-m{font-size:12px;color:var(--muted)}
+.nb .acts{display:flex;gap:6px;flex:none}
+
+/* buttons */
+.btn{border:1px solid rgba(230,192,104,.55);background:linear-gradient(180deg,#3a2f14,#251e0d);color:var(--gold-2);font-weight:600;font-size:12.5px;border-radius:9px;padding:7px 11px;white-space:nowrap;transition:filter .12s,transform .12s}
+.btn:hover{filter:brightness(1.25);transform:translateY(-1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;filter:none}
+.btn.ghost{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.14);color:var(--text)}
+.btn.teal{background:linear-gradient(180deg,#14403c,#0d2b28);border-color:rgba(95,212,192,.6);color:#c9fff5}
+.btn.red{background:linear-gradient(180deg,#5a1a17,#3a100e);border-color:rgba(239,106,95,.7);color:#ffd9d3}
+.btn.sm{padding:4px 8px;font-size:11.5px;border-radius:7px}
+
+/* side panel */
+#panel{position:fixed;top:84px;right:16px;bottom:16px;width:400px;z-index:11;display:flex;flex-direction:column;transform:translateX(calc(100% + 30px));transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+body.panel-open #panel{transform:none}
+#panel .ph{padding:16px 18px 12px;border-bottom:1px solid var(--line-2);position:relative}
+#panel .close{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:8px;border:1px solid var(--line-2);background:transparent;color:var(--muted)}
+.kick{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+#panel .ph .kick{padding-right:36px}
+#panel h2{font-family:var(--display);font-weight:700;font-size:21px;margin:5px 34px 8px 0;line-height:1.2}
+#panel .pb{overflow:auto;padding:14px 18px 18px;flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:11.5px;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.chip.gold{color:var(--gold-2);border-color:rgba(230,192,104,.4)}
+.chip.ok{color:#c9ffe0;border-color:rgba(115,211,154,.5)}
+.chip.warn{color:#ffe1a6;border-color:rgba(243,199,75,.5)}
+.chip.bad{color:#ffc9c2;border-color:rgba(239,106,95,.5)}
+.prog{height:8px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin:12px 0 4px}
+.prog i{display:block;height:100%;background:linear-gradient(90deg,#c98d2b,var(--gold-2));border-radius:99px}
+.prog.hp i{background:linear-gradient(90deg,#9c2b25,#ff7a6b)}
+.prog.teal i{background:linear-gradient(90deg,#1f8f80,var(--teal))}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+p.task{font-size:14px;line-height:1.55;margin:12px 0}
+.sec{margin-top:18px}
+.sec h3{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
+.row{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:13px}
+.row:hover{background:rgba(255,255,255,.05)}
+.row .tk{width:18px;text-align:center;flex:none;color:var(--dim)}
+.row.done .tk{color:var(--gold)}
+.row.xd .tk{color:var(--teal)}
+.row .id{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:none;min-width:38px}
+.row .tt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.done .tt{color:var(--muted)}
+.row .pg{font-size:11px;color:var(--dim);flex:none}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+code.path{font-family:var(--mono);font-size:11.5px;background:rgba(0,0,0,.35);border:1px solid var(--line-2);padding:5px 8px;border-radius:7px;display:block;word-break:break-all;color:#cfd6e6;margin-top:10px}
+.goal{display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:9px;cursor:pointer;font-size:13px;line-height:1.45}
+.goal:hover{background:rgba(255,255,255,.05)}
+.goal .bx{width:18px;height:18px;border-radius:5px;border:2px solid #8a6a62;flex:none;margin-top:1px;display:grid;place-items:center;font-size:12px;color:#1b0d0b}
+.goal.on .bx{background:var(--red);border-color:#ffb2a8}
+.goal.on span{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(255,255,255,.25)}
+.goal code,.task code{font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.07);padding:1px 4px;border-radius:4px}
+.hint{font-size:12.5px;color:var(--muted);background:rgba(255,255,255,.04);border:1px dashed var(--line-2);border-radius:10px;padding:9px 11px;margin-top:12px;line-height:1.5}
+
+/* tooltip, toasts, result, modal */
+#tip{position:fixed;z-index:30;pointer-events:none;background:rgba(8,11,20,.95);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12.5px;max-width:300px;opacity:0;transition:opacity .12s;box-shadow:var(--shadow)}
+#tip b{font-weight:600}
+#tip .tk{color:var(--gold);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase}
+#toasts{position:fixed;top:72px;right:16px;z-index:40;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
+body.panel-open #toasts{right:428px}
+.toast{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;box-shadow:var(--shadow);animation:tin .35s cubic-bezier(.2,.8,.2,1);max-width:360px}
+.toast.badge{display:flex;gap:12px;align-items:center;border-color:rgba(243,199,75,.7)}
+.toast.badge .e{font-size:28px}
+.toast .k{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+@keyframes tin{from{opacity:0;transform:translateX(30px)}}
+#result{position:fixed;left:16px;bottom:184px;z-index:12;width:min(560px,calc(100vw - 32px));display:none}
+#result.show{display:block;animation:tin .25s}
+#result .rh{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:13px}
+#result .rh .cmd{font-family:var(--mono);font-size:12px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#result pre{margin:0;max-height:38vh;overflow:auto;padding:10px 12px 12px;font-family:var(--mono);font-size:11.5px;line-height:1.5;color:#d7deec;border-top:1px solid var(--line-2);white-space:pre-wrap;word-break:break-word}
+#result.ok .badge-s{color:var(--green)}
+#result.err .badge-s{color:var(--red)}
+.xpfloat{position:fixed;z-index:45;pointer-events:none;font-family:var(--display);font-weight:900;font-size:26px;color:var(--xp);text-shadow:0 2px 0 #3b2a00,0 0 18px rgba(243,199,75,.6);animation:float 1.6s ease-out forwards}
+@keyframes float{0%{opacity:0;transform:translate(-50%,0) scale(.7)}15%{opacity:1;transform:translate(-50%,-14px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-90px) scale(1)}}
+#modal{position:fixed;inset:0;z-index:50;background:rgba(3,5,10,.62);display:none;align-items:center;justify-content:center;padding:20px}
+#modal.show{display:flex}
+#modal .box{width:min(760px,100%);max-height:86vh;overflow:auto;padding:22px 24px;animation:pop .25s cubic-bezier(.2,.8,.2,1)}
+@keyframes pop{from{opacity:0;transform:scale(.96)}}
+#modal h2{font-family:var(--display);margin:0 0 4px;font-size:24px}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:16px}
+.bdg{border:1px solid var(--line-2);border-radius:12px;padding:12px;text-align:center;background:rgba(255,255,255,.03)}
+.bdg .e{font-size:32px;line-height:1.2}
+.bdg .n{font-weight:600;font-size:13px;margin-top:6px}
+.bdg .d{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.35}
+.bdg.off{opacity:.42}
+.bdg.off .e{filter:grayscale(1) brightness(.6)}
+.bdg.on{border-color:rgba(243,199,75,.55);background:linear-gradient(180deg,rgba(243,199,75,.10),rgba(255,255,255,.02))}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:13.5px;margin-top:14px}
+kbd{font-family:var(--mono);font-size:11.5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-bottom-width:2px;border-radius:6px;padding:2px 6px}
+textarea,input[type=text]{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line-2);color:var(--text);border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;resize:vertical}
+textarea:focus,input:focus{outline:2px solid rgba(230,192,104,.5);outline-offset:1px}
+.chron{list-style:none;margin:14px 0 0;padding:0;font-size:13px}
+.chron li{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-2)}
+.chron .t{font-family:var(--mono);font-size:11px;color:var(--dim);flex:none;width:96px}
+.chron .x{margin-left:auto;color:var(--xp);font-weight:600;font-variant-numeric:tabular-nums}
+#banner{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;pointer-events:none;flex-direction:column;text-align:center}
+#banner.show{display:flex}
+#banner .bk{font-size:13px;letter-spacing:.4em;text-transform:uppercase;color:var(--gold);animation:rise .5s both}
+#banner .bt{font-family:var(--display);font-weight:900;font-size:clamp(34px,7vw,72px);letter-spacing:.06em;color:#fff3cf;text-shadow:0 0 30px rgba(243,199,75,.55),0 4px 0 #3b2a00;animation:rise .6s .05s both}
+#banner .bs{font-family:var(--display);font-size:clamp(16px,2.4vw,24px);color:var(--text);margin-top:6px;animation:rise .6s .15s both}
+#banner.red .bt{color:#ffd2cb;text-shadow:0 0 34px rgba(239,106,95,.7),0 4px 0 #3a0d0a}
+#banner::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(0,0,0,.55),transparent 65%)}
+#banner>*{position:relative}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.96)}}
+.spark{position:fixed;z-index:61;width:8px;height:8px;border-radius:2px;pointer-events:none;animation:burst 1.4s cubic-bezier(.1,.7,.3,1) forwards}
+@keyframes burst{to{transform:translate(var(--dx),var(--dy)) rotate(540deg);opacity:0}}
+#loading{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:radial-gradient(circle at 50% 40%,#13203a,#060912);transition:opacity .6s}
+#loading .t{font-family:var(--display);font-size:26px;letter-spacing:.2em}
+#loading .s{color:var(--muted);font-size:13px}
+#offline{position:fixed;top:0;left:0;right:0;z-index:80;background:#5a1a17;color:#ffe2dd;text-align:center;padding:8px;font-size:13px;display:none}
+
+@media (max-width:1360px){
+  #hud-c{top:96px;left:16px;transform:none}
+  #hud-c .pill{padding:6px 11px}
+  #toasts{top:72px}
+}
+@media (max-width:900px){
+  #next{left:16px;bottom:184px}
+  #result{bottom:330px}
+  #hud-c .pill span{display:none}
+}
+@media (max-width:640px){
+  #panel{top:auto;left:8px;right:8px;width:auto;height:62vh;bottom:8px;transform:translateY(110%)}
+  #mini{display:none}
+  #zoom{left:auto;right:16px;bottom:16px}
+  #next{left:16px;right:72px;bottom:16px}
+  body.panel-open #next{display:none}
+  #hud-r .ib:not(.keep){display:none}
+  #next .nb:nth-child(2){display:none}
+  #next .nb{max-width:none;flex:1}
+  #result{bottom:auto;top:176px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<svg id="map" class="zfar" aria-label="World map">
+  <defs>
+    <radialGradient id="gSea" gradientUnits="userSpaceOnUse" cx="3500" cy="2900" r="4600">
+      <stop offset="0" stop-color="#11263c"/><stop offset=".6" stop-color="#0c1a2c"/><stop offset="1" stop-color="#070f1c"/>
+    </radialGradient>
+    <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#04060f"/><stop offset=".7" stop-color="#0a1230"/><stop offset="1" stop-color="#101c3c"/>
+    </linearGradient>
+    <linearGradient id="gHorizon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#101c3c" stop-opacity="1"/><stop offset="1" stop-color="#0c1a2c" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="gAuroraA"><stop offset="0" stop-color="#3cf0b0" stop-opacity=".16"/><stop offset="1" stop-color="#3cf0b0" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gAuroraB"><stop offset="0" stop-color="#9b6bff" stop-opacity=".15"/><stop offset="1" stop-color="#9b6bff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gHalo"><stop offset="0" stop-color="#5fd4c0" stop-opacity=".45"/><stop offset="1" stop-color="#5fd4c0" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gGold"><stop offset="0" stop-color="#f6dc93" stop-opacity=".5"/><stop offset="1" stop-color="#f6dc93" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gBoss"><stop offset="0" stop-color="#ff5a4a" stop-opacity=".55"/><stop offset="1" stop-color="#ff5a4a" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gStar"><stop offset="0" stop-color="#fff2c4" stop-opacity=".9"/><stop offset=".35" stop-color="#f6dc93" stop-opacity=".35"/><stop offset="1" stop-color="#f6dc93" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gFog"><stop offset="0" stop-color="#aeb9cc" stop-opacity=".62"/><stop offset=".7" stop-color="#8f9bb2" stop-opacity=".25"/><stop offset="1" stop-color="#8f9bb2" stop-opacity="0"/></radialGradient>
+  </defs>
+  <g id="world">
+    <g id="L-static"></g>
+    <g id="L-road"></g>
+    <g id="L-sky"></g>
+    <g id="L-nodes"></g>
+    <g id="L-fog"></g>
+    <g id="L-top"></g>
+  </g>
+</svg>
+
+<div id="hud-l" class="hud card">
+  <div class="lvl"><svg viewBox="0 0 60 66" aria-hidden="true"><defs><linearGradient id="gHex" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0b8"/><stop offset=".5" stop-color="#e6c068"/><stop offset="1" stop-color="#a87a22"/></linearGradient></defs><path d="M30 2 56 17v32L30 64 4 49V17Z" fill="url(#gHex)" stroke="#fff3c9" stroke-width="2"/><path d="M30 9 50 20.5v25L30 57 10 45.5v-25Z" fill="none" stroke="#7a5814" stroke-width="1.5" opacity=".6"/></svg><span id="lvl-n">1</span></div>
+  <div class="lvl-info">
+    <div class="lvl-title" id="lvl-name">…</div>
+    <div class="xpbar"><i id="xp-fill"></i></div>
+    <div class="xp-meta"><span id="xp-text">0 XP</span><span id="xp-next"></span></div>
+  </div>
+</div>
+<div id="hud-c" class="hud">
+  <div class="pill" id="p-streak" title="Study streak: any XP-earning action counts as studying that day">🔥 <b id="streak-n">0</b><span id="streak-s">day streak</span></div>
+  <div class="pill" id="p-goal" title="Today's XP vs your daily goal"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="5"/><circle id="goal-ring" cx="18" cy="18" r="14" fill="none" stroke="#f3c74b" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 88" transform="rotate(-90 18 18)"/></svg><b id="goal-n">0/100</b><span>today</span></div>
+  <div class="pill" title="Required quests finished"><span style="font-size:15px">📚</span><b id="book-n">0%</b><span>of the book</span></div>
+</div>
+<div id="hud-r" class="hud">
+  <button id="b-focus" class="focus keep" data-act="focus" title="Focus timer: +1 XP per minute (10–90 per session)"><span class="dot"></span><span id="focus-t">Start focus</span></button>
+  <button class="ib" data-act="journal" title="Write in your journal (J)">✎</button>
+  <button class="ib keep local-only" id="b-ipad" data-act="ipad" title="Read on your iPad">📲<span class="live" id="ipad-live"></span></button>
+  <button class="ib keep" data-act="badges" title="Badges (B)">🏅<small id="badge-n">0</small></button>
+  <button class="ib" data-act="chronicle" title="Recent activity (C)">📜</button>
+  <button class="ib" data-act="undoLast" title="Undo your last action">↶</button>
+  <button class="ib" id="b-sound" data-act="sound" title="Sound on/off">🔊</button>
+  <button class="ib" data-act="help" title="Controls (?)">?</button>
+</div>
+
+<div id="mini" class="card"><canvas id="mini-c" width="464" height="292" aria-label="Minimap"></canvas></div>
+<div id="zoom">
+  <button class="ib" data-act="zin" title="Zoom in (+)">＋</button>
+  <button class="ib" data-act="zout" title="Zoom out (−)">－</button>
+  <button class="ib" data-act="home" title="Fly to where you are (F)">⌖</button>
+  <button class="ib" data-act="worldview" title="Whole world (M)">⤢</button>
+</div>
+<div id="next"></div>
+
+<aside id="panel" class="card" aria-live="polite">
+  <div class="ph"><button class="close" data-act="close" aria-label="Close">✕</button><div id="ph"></div></div>
+  <div class="pb" id="pb"></div>
+</aside>
+
+<div id="result" class="card"></div>
+<div id="tip"></div>
+<div id="toasts"></div>
+<div id="modal"><div class="box card" id="mbox"></div></div>
+<div id="banner"></div>
+<div id="offline">The world server isn't answering. Run <b>./quest world</b> again in your terminal, then reload.</div>
+<div id="loading"><div class="t">CHARTING THE REALM</div><div class="s">loading your quest log…</div></div>
+
+<script>
+"use strict";
+const TOKEN = "__QUEST_TOKEN__";
+let W = 7000, H = 4400;
+const SKY = 1060;
+// the road: [type, id, x, y] for every chapter, with each boss right after the last chapter it needs.
+// Laid out from the book itself (layoutWorld), so any number of chapters and bosses fits.
+let STOPS = [], ROAD = [], ROAD_SAMPLES = [], SKY_X = {}, BIOMES = {}, REGIONS = [], LAST_CH = 1;
+const BIOME = {meadow:"#2f4c33", forest:"#233f2c", highland:"#34404e", tundra:"#3c495b", ember:"#47302d", isle:"#3a4733"};
+const BIOME_ORDER = ["meadow", "forest", "highland", "tundra", "ember"];
+function roman(n){ let o = ""; [[1000,"M"],[900,"CM"],[500,"D"],[400,"CD"],[100,"C"],[90,"XC"],[50,"L"],[40,"XL"],[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]].forEach(([v, r]) => { while (n >= v){ o += r; n -= v; } }); return o; }
+const $ = s => document.querySelector(s);
+const svg = $("#map"), worldG = $("#world");
+const S = {st:null, prev:null, idx:{}, nodes:{}, sel:null, view:{x:0,y:0,k:.2}, anim:null, inertia:null, busy:false, anchor:null, labelScale:1};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const md = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hash(s){ let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
+let store = {};
+try { store = JSON.parse(localStorage.getItem("quest-world") || "{}"); } catch (e) { store = {}; }
+function saveStore(){ try { localStorage.setItem("quest-world", JSON.stringify(store)); } catch (e) {} }
+
+/* ───────────── sound ───────────── */
+let AC = null;
+function tone(freqs, dur = .14, type = "triangle", gap = .07, vol = .05){
+  if (store.mute) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = AC.currentTime + .01;
+    freqs.forEach((f, i) => {
+      const o = AC.createOscillator(), g = AC.createGain(), t = t0 + i * gap;
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur + .03);
+    });
+  } catch (e) {}
+}
+const SFX = {
+  xp: () => tone([660, 990], .13), level: () => tone([523, 659, 784, 1047, 1319], .32, "triangle", .1, .07),
+  boss: () => tone([147, 196, 294, 392, 587], .4, "sawtooth", .1, .03), badge: () => tone([988, 1319, 1760], .2, "sine", .07, .05),
+  err: () => tone([233, 175], .2, "square", .1, .025), tick: () => tone([880], .06, "sine", 0, .03), open: () => tone([520], .05, "sine", 0, .02),
+};
+
+/* ───────────── API ───────────── */
+async function api(path, body){
+  const opt = body ? {method:"POST", headers:{"Content-Type":"application/json", "X-Quest-Token":TOKEN}, body:JSON.stringify(body)} : {};
+  const r = await fetch(path, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+async function run(args, anchorKey){
+  if (S.busy) return;
+  S.busy = true; document.body.style.cursor = "progress";
+  S.anchor = anchorKey || S.sel;
+  showResult(args, null);
+  try {
+    const res = await api("/api/cmd", {args});
+    showResult(args, res);
+    if (res.code !== 0) SFX.err();
+    await refresh(true);
+  } catch (e) {
+    showResult(args, {code: 1, output: String(e.message || e)}); SFX.err();
+  } finally { S.busy = false; document.body.style.cursor = ""; }
+}
+function showResult(args, res){
+  const el = $("#result");
+  const cmd = "$ ./quest " + args.map(a => /\s/.test(a) ? JSON.stringify(a) : a).join(" ");
+  if (!res){ el.className = "card show"; el.innerHTML = `<div class="rh"><span class="badge-s">⏳</span><span class="cmd">${esc(cmd)}</span><span class="muted small">working…</span></div>`; return; }
+  const out = (res.output || "").replace(/\n{3,}/g, "\n\n").replace(/^\n+|\s+$/g, "");
+  const lines = out.split("\n").filter(l => l.trim());
+  const ok = res.code === 0;
+  const pick = ok ? [/✔|✨/, /📖|⚔|🐉|⏱|📝|↩|🏅|💀|🔒|🧪/] : [/✗/, /error:/, /✔|📖|⚔/];
+  const first = (pick.map(re => lines.find(l => re.test(l))).find(Boolean) || lines[0] || (ok ? "done" : "failed")).trim().replace(/^[✔✗]\s*/, "");
+  const long = lines.length > 3 || !ok;
+  el.className = "card show " + (ok ? "ok" : "err");
+  el.innerHTML = `<div class="rh"><span class="badge-s">${ok ? "✔" : "✗"}</span><span class="cmd" title="${esc(cmd)}">${esc(first)}</span>
+    ${long ? `<button class="btn ghost sm" data-act="toggleOut">${ok ? "Details" : "Hide"}</button>` : ""}
+    <button class="btn ghost sm" data-act="closeOut" aria-label="Dismiss">✕</button></div>
+    ${long ? `<pre style="${ok ? "display:none" : ""}">${esc(cmd + "\n" + out)}</pre>` : ""}`;
+  clearTimeout(S.resultTimer);
+  if (ok && !long) S.resultTimer = setTimeout(() => el.classList.remove("show"), 4500);
+}
+
+/* ───────────── state ───────────── */
+async function refresh(celebrate){
+  let st;
+  try { st = await api("/api/state"); $("#offline").style.display = "none"; }
+  catch (e) { $("#offline").style.display = "block"; return; }
+  S.prev = S.st; S.st = st; S.idx = indexState(st);
+  if (!S.staticBuilt){ layoutWorld(st); buildStatic(); S.staticBuilt = true; }
+  renderDynamic(); renderHUD(); renderNext();
+  if (S.sel && S.idx[S.sel]) renderPanel(S.sel);
+  if (celebrate && S.prev) celebrateDiff(S.prev, st);
+}
+function indexState(st){
+  const idx = {};
+  st.chapters.forEach(c => {
+    idx["ch:" + c.num] = {type:"ch", c};
+    c.reading.forEach(q => idx["rd:" + q.id] = {type:"rd", q, c});
+    c.exercises.forEach(e => idx["ex:" + e.id] = {type:"ex", e, c});
+  });
+  st.bosses.forEach(b => idx["boss:" + b.n] = {type:"boss", b});
+  st.side.forEach(s => {
+    idx["side:" + s.key] = {type:"side", s};
+    s.chapters.forEach(sc => sc.reading.forEach(q => idx["sq:" + q.id] = {type:"sq", q, s, sc}));
+    s.labs.forEach(l => idx["lab:" + l.id] = {type:"lab", e:l, s});
+  });
+  return idx;
+}
+
+/* ───────────── static world (terrain, sky) ───────────── */
+function biomeOf(type, id){ return BIOMES[type + id] || "meadow"; }
+function layoutWorld(st){
+  const after = {}, seq = [];
+  st.bosses.forEach(b => { const last = Math.max(...b.unlock); (after[last] = after[last] || []).push(b.n); });
+  st.chapters.forEach(c => { seq.push(["ch", c.num]); (after[c.num] || []).forEach(n => seq.push(["boss", n])); });
+  st.bosses.forEach(b => { if (!seq.some(s => s[0] === "boss" && s[1] === b.n)) seq.push(["boss", b.n]); });
+  LAST_CH = st.chapters.length ? st.chapters[st.chapters.length - 1].num : 1;
+  const n = seq.length, margin = 560, perRow = 13, rowH = 760;
+  const rows = Math.max(1, Math.ceil(n / perRow));
+  H = SKY + 500 + (rows - 1) * rowH + 1250;
+  const step = rows === 1 ? Math.min(560, (W - 2 * margin) / Math.max(1, n - 1)) : (W - 2 * margin) / (perRow - 1);
+  const x0 = rows === 1 ? (W - step * (n - 1)) / 2 : margin;
+  const R = rng(hash(st.book.title));
+  STOPS = seq.map(([type, id], i) => {
+    const r = Math.floor(i / perRow), j = i % perRow, xs = x0 + j * step;
+    const x = r % 2 === 0 ? xs : W - xs;
+    const y = H - 900 - r * rowH + Math.sin(j * 1.15 + r * 2.1) * 190 + (R() - .5) * 90;
+    return [type, id, Math.round(x + (R() - .5) * 60), Math.round(y)];
+  });
+  ROAD = STOPS.map(s => [s[2], s[3]]);
+  ROAD_SAMPLES = crSample(ROAD, 16);
+  // biomes change in bands along the road (meadow → forest → highland → tundra → ember); optional chapters are islands
+  const parts = st.book.parts || [];
+  let lastBiome = BIOME_ORDER[0];
+  seq.forEach(([type, id], i) => {
+    let b;
+    if (type === "ch"){
+      const c = st.chapters.find(c => c.num === id);
+      b = c && c.optional ? "isle" : BIOME_ORDER[Math.min(BIOME_ORDER.length - 1, Math.floor(i / n * BIOME_ORDER.length))];
+      if (b !== "isle") lastBiome = b;
+    } else b = lastBiome;
+    BIOMES[type + id] = b;
+  });
+  // region names: each part's name under its stretch of road, or the book's title
+  const groups = parts.length ? parts.map(p => ({name: p.name, pts: STOPS.filter(s => s[0] === "ch" && p.chapters.includes(s[1]))}))
+                              : [{name: st.book.short, pts: STOPS}];
+  REGIONS = groups.filter(g => g.pts.length).map(g => {
+    const xs = g.pts.map(s => s[2]), ys = g.pts.map(s => s[3]);
+    return {name: g.name.toUpperCase(), x: (Math.min(...xs) + Math.max(...xs)) / 2, y: Math.max(...ys) + 340};
+  });
+  // side books spread across the sky
+  st.side.forEach((s, i) => SKY_X[s.key] = W * (i + .5) / st.side.length);
+  document.title = `${st.book.short} · Quest`;
+}
+function crPath(pts){
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++){
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+function crSample(pts, per = 12){
+  const out = [];
+  for (let i = 0; i < pts.length - 1; i++){
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    for (let s = 0; s < per; s++){
+      const t = s / per, u = 1 - t;
+      out.push([u*u*u*p1[0] + 3*u*u*t*c1[0] + 3*u*t*t*c2[0] + t*t*t*p2[0], u*u*u*p1[1] + 3*u*u*t*c1[1] + 3*u*t*t*c2[1] + t*t*t*p2[1]]);
+    }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+function buildStatic(){
+  const R = rng(7), o = [];
+  o.push(`<rect x="-3000" y="-3000" width="${W + 6000}" height="${H + 6000}" fill="url(#gSea)"/>`);
+  o.push(`<rect x="-3000" y="-3000" width="${W + 6000}" height="${SKY + 3000}" fill="url(#gSky)"/>`);
+  o.push(`<rect x="-3000" y="${SKY - 2}" width="${W + 6000}" height="260" fill="url(#gHorizon)"/>`);
+  for (let i = 0; i < 7; i++) o.push(`<ellipse cx="${400 + i * 1050 + R() * 300}" cy="${260 + R() * 420}" rx="${900 + R() * 600}" ry="${180 + R() * 160}" fill="url(#${i % 2 ? "gAuroraB" : "gAuroraA"})"/>`);
+  for (let i = 0; i < 340; i++){
+    const x = R() * W, y = R() * (SKY - 40), r = R() < .08 ? 2.6 : .8 + R() * 1.4;
+    o.push(`<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${r.toFixed(1)}" fill="#dfe6ff" ${i % 6 === 0 ? `class="twinkle" style="animation-delay:${(R() * 3).toFixed(2)}s"` : `opacity="${(.25 + R() * .55).toFixed(2)}"`}/>`);
+  }
+  // land: circles around stops and along the road
+  const blobs = [];
+  STOPS.forEach(s => {
+    const b = biomeOf(s[0], s[1]);
+    blobs.push([s[2], s[3], 330, b]);
+    for (let j = 0; j < 4; j++){ const a = R() * 6.283, d = 170 + R() * 160; blobs.push([s[2] + Math.cos(a) * d, s[3] + Math.sin(a) * d * .8, 150 + R() * 110, b]); }
+  });
+  for (let i = 0; i < STOPS.length - 1; i++){
+    const a = STOPS[i], b = STOPS[i + 1], dist = Math.hypot(b[2] - a[2], b[3] - a[3]), n = Math.ceil(dist / 150);
+    for (let s = 1; s < n; s++){
+      const t = s / n;
+      blobs.push([a[2] + (b[2] - a[2]) * t + (R() - .5) * 90, a[3] + (b[3] - a[3]) * t + (R() - .5) * 90, 210 + R() * 80, biomeOf(...(t < .5 ? [a[0], a[1]] : [b[0], b[1]]))]);
+    }
+  }
+  for (let i = 0, made = 0; i < 200 && made < 6; i++){                  // a few islands out at sea
+    const x = 200 + R() * (W - 400), y = SKY + 260 + R() * (H - SKY - 420);
+    if (STOPS.some(s => Math.hypot(s[2] - x, s[3] - y) < 700)) continue;
+    blobs.push([x, y, 100 + R() * 70, "isle"]); made++;
+  }
+  o.push(`<g>${blobs.map(b => `<circle cx="${b[0].toFixed(0)}" cy="${b[1].toFixed(0)}" r="${(b[2] + 70).toFixed(0)}" fill="#14324a" opacity=".55"/>`).join("")}</g>`);
+  o.push(`<g>${blobs.map(b => `<circle cx="${b[0].toFixed(0)}" cy="${b[1].toFixed(0)}" r="${(b[2] + 26).toFixed(0)}" fill="#2c4f55"/>`).join("")}</g>`);
+  o.push(`<g>${blobs.map(b => `<circle cx="${b[0].toFixed(0)}" cy="${b[1].toFixed(0)}" r="${b[2].toFixed(0)}" fill="${BIOME[b[3]]}"/>`).join("")}</g>`);
+  o.push(`<g opacity=".28">${blobs.filter((_, i) => i % 2 === 0).map(b => `<circle cx="${(b[0] - 30).toFixed(0)}" cy="${(b[1] - 40).toFixed(0)}" r="${(b[2] * .55).toFixed(0)}" fill="#ffffff" opacity=".06"/>`).join("")}</g>`);
+  // waves
+  for (let i = 0; i < 160; i++){
+    const x = R() * W, y = SKY + 120 + R() * (H - SKY - 60);
+    if (blobs.some(b => Math.hypot(b[0] - x, b[1] - y) < b[2] + 120)) continue;
+    o.push(`<path d="M${x.toFixed(0)},${y.toFixed(0)} q14,-10 28,0 q14,10 28,0" fill="none" stroke="#3d6680" stroke-width="3" stroke-linecap="round" opacity=".45"/>`);
+  }
+  // decorations, kept away from the road and the stops
+  const deco = [];
+  for (let i = 0; i < 2600 && deco.length < 420; i++){
+    const x = R() * W, y = SKY + 60 + R() * (H - SKY);
+    const host = blobs.find(b => Math.hypot(b[0] - x, b[1] - y) < b[2] - 30);
+    if (!host) continue;
+    if (STOPS.some(s => Math.hypot(s[2] - x, s[3] - y) < 215)) continue;
+    if (ROAD_SAMPLES.some(p => Math.hypot(p[0] - x, p[1] - y) < 62)) continue;
+    if (deco.some(d => Math.hypot(d[0] - x, d[1] - y) < 46)) continue;
+    deco.push([x, y, host[3], .75 + R() * .6]);
+  }
+  deco.sort((a, b) => a[1] - b[1]);
+  o.push(`<g>${deco.map(([x, y, b, s]) => decoSVG(x, y, b, s)).join("")}</g>`);
+  REGIONS.forEach(r => o.push(`<text class="region" x="${r.x.toFixed(0)}" y="${r.y.toFixed(0)}" font-size="${r.name.length > 28 ? 84 : 110}">${esc(r.name)}</text>`));
+  if (S.st.side.length) o.push(`<text class="region" x="${W / 2}" y="${SKY + 40}" font-size="56" style="fill:rgba(200,214,255,.22)">✦ THE CELESTIAL ATLAS · SIDE QUESTS ✦</text>`);
+  o.push(compassSVG(W - 440, H - 380));
+  $("#L-static").innerHTML = o.join("");
+  S.blobs = blobs;
+  buildMiniStatic();
+}
+function decoSVG(x, y, b, s){
+  const X = x.toFixed(0), Y = y.toFixed(0), sc = s.toFixed(2);
+  const g = inner => `<g transform="translate(${X},${Y}) scale(${sc})">${inner}</g>`;
+  if (b === "meadow" || b === "isle") return g(`<ellipse cx="4" cy="16" rx="20" ry="7" fill="#000" opacity=".2"/><circle r="18" fill="#3f6d45"/><circle cx="-5" cy="-5" r="9" fill="#5c8f5c" opacity=".7"/>`);
+  if (b === "forest") return g(`<ellipse cx="3" cy="22" rx="16" ry="6" fill="#000" opacity=".22"/><path d="M0,-34 L20,18 L-20,18 Z" fill="#2c5e3c"/><path d="M0,-34 L20,18 L0,18 Z" fill="#214a2f"/><rect x="-3" y="18" width="6" height="7" fill="#4b3826"/>`);
+  if (b === "highland") return g(`<path d="M-44,22 L-6,-34 L18,0 L30,-14 L52,22 Z" fill="#4a5668"/><path d="M-6,-34 L18,0 L4,22 L-10,22 Z" fill="#3b4555"/>`);
+  if (b === "tundra") return g(`<path d="M-46,24 L0,-48 L46,24 Z" fill="#566377"/><path d="M0,-48 L46,24 L8,24 Z" fill="#46526a"/><path d="M0,-48 L14,-26 L5,-30 L-3,-22 L-14,-26 Z" fill="#e8eef6"/>`);
+  return g(`<path d="M-40,22 L-10,-30 L10,-30 L40,22 Z" fill="#5e3a34"/><path d="M-10,-30 L10,-30 L4,-18 L-4,-18 Z" fill="#ff8a4a"/><circle cx="0" cy="-40" r="6" fill="#ff7a45" opacity=".45"/>`);
+}
+function compassSVG(x, y){
+  return `<g transform="translate(${x},${y})" opacity=".55">
+    <circle r="150" fill="none" stroke="#c9b27a" stroke-width="3" opacity=".5"/><circle r="120" fill="none" stroke="#c9b27a" stroke-width="1.5" stroke-dasharray="4 10" opacity=".6"/>
+    <path d="M0,-140 L18,-18 L140,0 L18,18 L0,140 L-18,18 L-140,0 L-18,-18 Z" fill="#c9b27a" opacity=".55"/>
+    <path d="M0,-140 L18,-18 L0,0 Z M140,0 L18,18 L0,0 Z M0,140 L-18,18 L0,0 Z M-140,0 L-18,-18 L0,0 Z" fill="#f2deaa"/>
+    <text y="-162" text-anchor="middle" font-family="Cinzel,serif" font-weight="900" font-size="40" fill="#f2deaa">N</text></g>`;
+}
+
+/* ───────────── dynamic layers ───────────── */
+function stopIndexOf(type, id){ return STOPS.findIndex(s => s[0] === type && s[1] === id); }
+function arc(n, a0, a1, r){
+  if (n === 1) return [[Math.cos((a0 + a1) / 2) * r, Math.sin((a0 + a1) / 2) * r]];
+  return Array.from({length:n}, (_, i) => { const a = a0 + (a1 - a0) * i / (n - 1); return [Math.cos(a) * r, Math.sin(a) * r]; });
+}
+function banner(text, y, cls = ""){
+  const w = Math.max(120, text.length * 11.2 + 44);
+  return `<g class="lbl ${cls}" data-lbl="1" transform="translate(0,${y}) scale(${S.labelScale.toFixed(3)})"><rect class="lbl-bg" x="${-w / 2}" y="-19" width="${w}" height="38" rx="19"/><text class="lbl-name" text-anchor="middle" dy="7">${esc(text)}</text></g>`;
+}
+function renderDynamic(){
+  const st = S.st; S.nodes = {};
+  const cur = st.current ?? LAST_CH, curIdx = stopIndexOf("ch", cur);
+  // road
+  const done = ROAD.slice(0, Math.max(1, curIdx + 1));
+  $("#L-road").innerHTML = `<path class="road-base" d="${crPath(ROAD)}"/><path class="road-ahead" d="${crPath(ROAD)}"/>${done.length > 1 ? `<path class="road-done" d="${crPath(done)}"/>` : ""}`;
+  const out = [], fog = [], top = [];
+  STOPS.forEach(([type, id, x, y]) => {
+    if (type === "ch"){
+      const c = S.idx["ch:" + id].c;
+      const rd = c.reading.filter(q => q.done).length, req = c.exercises.filter(e => !e.optional), ed = req.filter(e => e.done).length;
+      const tot = c.reading.length + req.length, frac = tot ? (rd + ed) / tot : 0;
+      const isCur = id === st.current;
+      const fogged = !c.optional && !c.cleared && !c.started && !isCur && (st.current === null || id > st.current);
+      const cls = ["node", "ch", c.cleared ? "cleared" : "", c.started ? "active" : "", isCur ? "current" : "", fogged ? "fog" : "", c.optional ? "optional" : "", S.sel === "ch:" + id ? "sel" : ""].join(" ");
+      S.nodes["ch:" + id] = [x, y];
+      let g = `<g class="${cls}" data-k="ch:${id}" transform="translate(${x},${y})">`;
+      if (isCur) g += `<circle r="170" fill="url(#gHalo)" class="pulse"/>`;
+      if (c.cleared) g += `<circle r="150" fill="url(#gGold)"/>`;
+      g += `<circle class="selring" r="98"/><circle class="ring-bg" r="80"/>`;
+      if (frac > 0) g += `<circle class="ring" r="80" stroke-dasharray="${(502.6 * frac).toFixed(1)} 600" transform="rotate(-90)"/>`;
+      g += `<circle class="disc" r="64"/><text class="num" dy="20">${id}</text>`;
+      if (c.cleared) g += `<path class="crown" d="M-30,-70 L-20,-96 L-8,-78 L0,-102 L8,-78 L20,-96 L30,-70 Z"/>`;
+      g += banner(c.title, 112);
+      // quest ring (visible when zoomed in)
+      const qs = c.reading, xs = c.exercises;
+      g += `<g class="qring"><circle class="orbit" r="178"/>`;
+      const wideR = qs.length > 9, wideX = xs.length > 8;
+      arc(qs.length, Math.PI * (wideR ? -1.08 : -.92), Math.PI * (wideR ? .08 : -.08), 178).forEach(([dx, dy], i) => {
+        const q = qs[i], k = "rd:" + q.id; S.nodes[k] = [x + dx, y + dy];
+        g += `<g class="node q ${q.done ? "done" : ""} ${S.sel === k ? "sel" : ""}" data-k="${k}" transform="translate(${dx.toFixed(1)},${dy.toFixed(1)})"><circle r="26" fill="transparent"/><circle class="selring" r="24"/><circle class="body" r="15"/>${q.done ? `<path class="chk" d="M-6,0 L-1.5,5 L7,-5"/>` : ""}<text class="qlbl" y="34">${esc(q.id)}</text></g>`;
+      });
+      arc(xs.length, Math.PI * (wideX ? .07 : .2), Math.PI * (wideX ? .93 : .8), 205).forEach(([dx, dy], i) => {
+        const e = xs[i], k = "ex:" + e.id; S.nodes[k] = [x + dx, y + dy];
+        const pips = Array.from({length:e.stars}, (_, j) => `<circle class="pip" cx="${(j - (e.stars - 1) / 2) * 9}" cy="27" r="3"/>`).join("");
+        g += `<g class="node x ${e.done ? "done" : ""} ${e.clean ? "clean" : ""} ${S.sel === k ? "sel" : ""}" data-k="${k}" transform="translate(${dx.toFixed(1)},${dy.toFixed(1)})"><circle r="26" fill="transparent"/><circle class="selring" r="24"/><rect class="body" x="-13" y="-13" width="26" height="26" rx="5" transform="rotate(45)" ${e.optional ? 'stroke-dasharray="4 4"' : ""}/>${e.done ? `<path class="chk" d="M-6,0 L-1.5,5 L7,-5" style="stroke:#0b2a26"/>` : ""}${pips}<text class="qlbl" y="46">${esc(e.id)}</text></g>`;
+      });
+      g += `</g></g>`;
+      out.push(g);
+      if (fogged){
+        const R = rng(hash("fog" + id));
+        let f = `<g class="fog" transform="translate(${x},${y})">`;
+        for (let j = 0; j < 6; j++) f += `<ellipse cx="${((R() - .5) * 220).toFixed(0)}" cy="${((R() - .5) * 150).toFixed(0)}" rx="${(170 + R() * 90).toFixed(0)}" ry="${(110 + R() * 60).toFixed(0)}" fill="url(#gFog)"/>`;
+        fog.push(f + "</g>");
+      }
+      if (isCur) top.push(markerSVG(x, y));
+    } else {
+      const b = S.idx["boss:" + id].b;
+      const state = b.defeated ? "dead" : b.unlocked ? "ready" : "locked";
+      const k = "boss:" + id; S.nodes[k] = [x, y];
+      let g = `<g class="node boss ${state} ${S.sel === k ? "sel" : ""}" data-k="${k}" transform="translate(${x},${y})">`;
+      if (state === "ready") g += `<circle r="160" fill="url(#gBoss)" class="pulse"/>`;
+      g += `<circle class="selring" r="104"/>`;
+      g += `<path class="horn" d="M-40,-52 Q-96,-84 -82,-132 Q-66,-96 -26,-70 Z"/><path class="horn" d="M40,-52 Q96,-84 82,-132 Q66,-96 26,-70 Z"/>`;
+      g += `<path class="crest" d="M0,-78 L62,-50 L58,22 Q44,62 0,84 Q-44,62 -58,22 L-62,-50 Z"/>`;
+      g += `<text class="bnum" dy="16">${roman(id)}</text>`;
+      if (state === "locked") g += `<g class="lock" transform="translate(0,46)"><rect x="-13" y="-6" width="26" height="20" rx="4"/><path d="M-8,-6 v-7 a8,8 0 0 1 16,0 v7" fill="none" stroke="#c9b9a6" stroke-width="4"/></g>`;
+      if (state === "dead") g += `<path class="slash" d="M-44,-44 L44,44 M44,-44 L-44,44"/>`;
+      g += banner(b.name, 122) + `</g>`;
+      out.push(g);
+    }
+  });
+  $("#L-nodes").innerHTML = out.join("");
+  $("#L-fog").innerHTML = fog.join("");
+  $("#L-sky").innerHTML = renderSky();
+  $("#L-top").innerHTML = top.join("");
+  drawMini();
+}
+function markerSVG(x, y){
+  const lv = S.st.player.level;
+  return `<g transform="translate(${x},${y - 150})" pointer-events="none"><g class="marker">
+    <ellipse cx="0" cy="62" rx="22" ry="7" fill="#000" opacity=".35"/>
+    <line x1="-18" y1="60" x2="-18" y2="-46" stroke="#e8dcc0" stroke-width="5" stroke-linecap="round"/>
+    <path d="M-16,-46 L40,-34 L22,-18 L40,-2 L-16,4 Z" fill="#5fd4c0" stroke="#d9fff7" stroke-width="3" stroke-linejoin="round"/>
+    <text x="10" y="-14" text-anchor="middle" font-family="Cinzel,serif" font-weight="900" font-size="18" fill="#08302b">${lv}</text>
+    <circle cx="-18" cy="-50" r="6" fill="#f6dc93"/></g></g>`;
+}
+function skyLayout(s){
+  if (S.skyCache && S.skyCache[s.key]) return S.skyCache[s.key];
+  const arms = s.chapters.length, maxLen = Math.max(1, ...s.chapters.map(c => c.reading.length));
+  const room = Math.min((SKY - 300) / 1.64, W / S.st.side.length / 2 - 140);
+  const stepR = clamp((room - 70) / Math.max(1, maxLen - 1), 14, 46);
+  const Rmax = 70 + (maxLen - 1) * stepR, cx = SKY_X[s.key], cy = 150 + Rmax * .82;
+  const stars = [], lines = [];
+  s.chapters.forEach((sc, j) => {
+    const th = -Math.PI / 2 + Math.PI * 2 * j / arms;
+    let prev = null;
+    sc.reading.forEach((q, m) => {
+      const r = 70 + m * stepR, a = th + m * .075;
+      const p = [cx + Math.cos(a) * r, cy + Math.sin(a) * r * .82];
+      stars.push({q, p, sc});
+      lines.push([prev ? prev.p : [cx, cy], p, prev ? prev.q.id : null, q.id]);
+      prev = {p, q};
+    });
+  });
+  const labs = s.labs.map((l, i) => {
+    const th = -Math.PI / 2 + Math.PI * 2 * (i + .5) / arms, r = Rmax * .58;
+    return {l, p:[cx + Math.cos(th + .1) * r, cy + Math.sin(th + .1) * r * .82]};
+  });
+  const L = {cx, cy, Rmax, stars, lines, labs};
+  (S.skyCache = S.skyCache || {})[s.key] = L;
+  return L;
+}
+function renderSky(){
+  const out = [];
+  S.st.side.forEach(s => {
+    const L = skyLayout(s), read = new Set();
+    s.chapters.forEach(sc => sc.reading.forEach(q => { if (q.done) read.add(q.id); }));
+    const total = s.reading_done[1], got = s.reading_done[0];
+    out.push(`<g>`);
+    L.lines.forEach(([a, b, ida, idb]) => {
+      const lit = read.has(idb) && (ida === null || read.has(ida));
+      out.push(`<line class="cline ${lit ? "lit" : ""}" x1="${a[0].toFixed(0)}" y1="${a[1].toFixed(0)}" x2="${b[0].toFixed(0)}" y2="${b[1].toFixed(0)}"/>`);
+    });
+    L.stars.forEach(({q, p}) => {
+      const k = "sq:" + q.id; S.nodes[k] = p;
+      out.push(`<g class="node star ${q.done ? "lit" : ""} ${q.optional ? "opt" : ""} ${S.sel === k ? "sel" : ""}" data-k="${k}" transform="translate(${p[0].toFixed(0)},${p[1].toFixed(0)})"><circle r="22" fill="transparent"/>${q.done ? `<circle r="30" fill="url(#gStar)"/>` : ""}<circle class="selring" r="18"/><circle class="core" r="${q.done ? 8 : q.optional ? 4.5 : 6}"/></g>`);
+    });
+    L.labs.forEach(({l, p}) => {
+      const k = "lab:" + l.id; S.nodes[k] = p;
+      out.push(`<g class="node lab ${l.done ? "done" : ""} ${S.sel === k ? "sel" : ""}" data-k="${k}" transform="translate(${p[0].toFixed(0)},${p[1].toFixed(0)})"><circle r="26" fill="transparent"/>${l.done ? `<circle r="34" fill="url(#gStar)"/>` : ""}<circle class="selring" r="24"/><path class="body" d="M0,-20 L5,-5 L20,0 L5,5 L0,20 L-5,5 L-20,0 L-5,-5 Z"/></g>`);
+    });
+    const k = "side:" + s.key; S.nodes[k] = [L.cx, L.cy];
+    const init = s.short.split(/\s+/).filter(w => /^[A-Z]/.test(w)).map(w => w[0]).join("").slice(0, 3);
+    out.push(`<g class="node book ${s.finished ? "done" : ""} ${S.sel === k ? "sel" : ""}" data-k="${k}" transform="translate(${L.cx.toFixed(0)},${L.cy.toFixed(0)})"><circle r="${s.finished ? 90 : 60}" fill="url(#gStar)"/><circle class="selring" r="40"/><circle class="core" r="30"/><text class="init" dy="8">${esc(init)}</text></g>`);
+    out.push(`<g class="node" data-k="${k}"><text class="skytitle" x="${L.cx.toFixed(0)}" y="${(L.cy - L.Rmax * .82 - 62).toFixed(0)}">${esc(s.short.toUpperCase())}</text><text class="skysub" x="${L.cx.toFixed(0)}" y="${(L.cy - L.Rmax * .82 - 28).toFixed(0)}">${got}/${total} stars · ${s.labs_done[0]}/${s.labs_done[1]} labs${s.finished ? " · complete" : ""}</text></g>`);
+    out.push(`</g>`);
+  });
+  return out.join("");
+}
+
+/* ───────────── view: pan, zoom, fly ───────────── */
+function kMin(){ return Math.min(innerWidth / W, innerHeight / H) * .92; }
+const K_MAX = 2.8;
+function clampView(){
+  const v = S.view, sw = innerWidth, sh = innerHeight, ww = W * v.k, wh = H * v.k, m = 160;
+  v.x = ww + 2 * m < sw ? (sw - ww) / 2 : clamp(v.x, sw - ww - m, m);
+  v.y = wh + 2 * m < sh ? (sh - wh) / 2 : clamp(v.y, sh - wh - m, m);
+}
+let rafPending = false;
+function schedule(){ if (!rafPending){ rafPending = true; requestAnimationFrame(applyView); } }
+function applyView(){
+  rafPending = false;
+  const v = S.view;
+  worldG.setAttribute("transform", `translate(${v.x.toFixed(2)},${v.y.toFixed(2)}) scale(${v.k.toFixed(5)})`);
+  const z = v.k < .3 ? "zfar" : v.k < .7 ? "zmid" : v.k < 1.45 ? "znear" : "zclose";
+  const cls = z === "zclose" ? "znear zclose" : z;
+  if (svg.dataset.z !== cls){ svg.setAttribute("class", cls + (svg.classList.contains("dragging") ? " dragging" : "")); svg.dataset.z = cls; }
+  const ls = clamp(.74 / v.k, .62, 2.3);
+  if (Math.abs(ls - S.labelScale) > .01){
+    S.labelScale = ls;
+    document.querySelectorAll("[data-lbl]").forEach(el => { const t = el.getAttribute("transform"); el.setAttribute("transform", t.replace(/scale\([^)]*\)/, `scale(${ls.toFixed(3)})`)); });
+  }
+  drawMiniView();
+}
+function zoomAt(px, py, f){
+  const v = S.view, k2 = clamp(v.k * f, kMin(), K_MAX), r = k2 / v.k;
+  v.x = px - (px - v.x) * r; v.y = py - (py - v.y) * r; v.k = k2;
+  clampView(); schedule();
+}
+function viewCenter(){ const pw = document.body.classList.contains("panel-open") && innerWidth > 640 ? 420 : 0; return [(innerWidth - pw) / 2, innerHeight / 2]; }
+function flyTo(wx, wy, k2, dur = 900){
+  stopMotion();
+  const v = S.view, [sx, sy] = viewCenter();
+  k2 = clamp(k2 ?? v.k, kMin(), K_MAX);
+  const c0 = [(sx - v.x) / v.k, (sy - v.y) / v.k], k0 = v.k, t0 = performance.now();
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const step = now => {
+    const t = clamp((now - t0) / dur, 0, 1), e = ease(t);
+    const k = Math.exp(Math.log(k0) + (Math.log(k2) - Math.log(k0)) * e);
+    const bump = 1 - Math.sin(Math.PI * e) * clamp(Math.hypot(wx - c0[0], wy - c0[1]) / 9000, 0, .35);
+    v.k = clamp(k * bump, kMin(), K_MAX);
+    const cx = c0[0] + (wx - c0[0]) * e, cy = c0[1] + (wy - c0[1]) * e;
+    v.x = sx - cx * v.k; v.y = sy - cy * v.k;
+    clampView(); applyView();
+    if (t < 1) S.anim = requestAnimationFrame(step); else S.anim = null;
+  };
+  S.anim = requestAnimationFrame(step);
+}
+function stopMotion(){ if (S.anim){ cancelAnimationFrame(S.anim); S.anim = null; } if (S.inertia){ cancelAnimationFrame(S.inertia); S.inertia = null; } }
+function flyToKey(key, k){ const p = S.nodes[key]; if (p) flyTo(p[0], p[1], k); }
+function homeView(){
+  const cur = S.st.current ?? LAST_CH;
+  flyToKey("ch:" + cur, .62);
+}
+function worldView(){ const k = kMin(); flyTo(W / 2, H / 2, k, 800); }
+function jumpTo(wx, wy, k){
+  stopMotion();
+  const v = S.view, [sx, sy] = viewCenter();
+  v.k = clamp(k, kMin(), K_MAX); v.x = sx - wx * v.k; v.y = sy - wy * v.k; clampView(); applyView();
+}
+/* deep links: #ch:5, #boss:1, #side:prag, #rd:2.3, #world, #sky (add @zoom, e.g. #ch:5@1.4) */
+function applyHash(animate){
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (!h) return false;
+  const [key, z] = h.split("@");
+  const go = (x, y, k) => animate ? flyTo(x, y, k) : jumpTo(x, y, k);
+  if (key === "world"){ closePanel(); go(W / 2, H / 2, kMin()); return true; }
+  if (key === "sky"){ closePanel(); go(W / 2, SKY / 2, Math.max(kMin(), innerWidth / W * 1.05)); return true; }
+  const p = S.nodes[key];
+  if (!p) return false;
+  select(key);
+  const t = key.split(":")[0];
+  go(p[0], p[1], +z || (t === "ch" ? .95 : t === "side" ? .62 : t === "boss" ? .8 : 1.15));
+  return true;
+}
+addEventListener("hashchange", () => applyHash(true));
+
+/* pointer input: drag with inertia, pinch, wheel, click */
+const pointers = new Map();
+let drag = null, pinch = null;
+svg.addEventListener("pointerdown", e => {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  svg.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  stopMotion(); hideTip();
+  if (pointers.size === 1){
+    drag = {x:e.clientX, y:e.clientY, moved:0, target:e.target, vx:0, vy:0, t:performance.now()};
+  } else if (pointers.size === 2){
+    const [a, b] = [...pointers.values()];
+    pinch = {d:Math.hypot(a.x - b.x, a.y - b.y), mx:(a.x + b.x) / 2, my:(a.y + b.y) / 2};
+    drag = null;
+  }
+});
+svg.addEventListener("pointermove", e => {
+  if (!pointers.has(e.pointerId)){ hover(e); return; }
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (pinch && pointers.size === 2){
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    S.view.x += mx - pinch.mx; S.view.y += my - pinch.my;
+    zoomAt(mx, my, d / pinch.d);
+    pinch = {d, mx, my};
+    return;
+  }
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y, now = performance.now(), dt = Math.max(1, now - drag.t);
+  drag.moved += Math.abs(dx) + Math.abs(dy);
+  if (drag.moved > 5) svg.classList.add("dragging");
+  S.view.x += dx; S.view.y += dy; clampView(); schedule();
+  drag.vx = drag.vx * .6 + (dx / dt) * .4; drag.vy = drag.vy * .6 + (dy / dt) * .4;
+  drag.x = e.clientX; drag.y = e.clientY; drag.t = now;
+});
+function endPointer(e){
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  svg.classList.remove("dragging");
+  if (pinch){ if (pointers.size < 2) pinch = null; drag = null; return; }
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (d.moved < 6){ clickTarget(d.target); return; }
+  if (performance.now() - d.t > 80) return;
+  let vx = clamp(d.vx * 16, -48, 48), vy = clamp(d.vy * 16, -48, 48);
+  const step = () => {
+    vx *= .93; vy *= .93;
+    if (Math.hypot(vx, vy) < .4){ S.inertia = null; return; }
+    S.view.x += vx; S.view.y += vy; clampView(); applyView();
+    S.inertia = requestAnimationFrame(step);
+  };
+  S.inertia = requestAnimationFrame(step);
+}
+svg.addEventListener("pointerup", endPointer);
+svg.addEventListener("pointercancel", endPointer);
+svg.addEventListener("dblclick", e => { e.preventDefault(); zoomAnimated(e.clientX, e.clientY, 1.8); });
+svg.addEventListener("wheel", e => {
+  e.preventDefault(); stopMotion(); hideTip();
+  // mouse wheels send big discrete jumps (or line units); trackpads stream small deltas, often with deltaX too
+  const mouseWheel = e.deltaMode === 1 || (!e.ctrlKey && Math.abs(e.deltaX) < .5 && Math.abs(e.deltaY) >= 50);
+  if (e.ctrlKey || e.metaKey || mouseWheel){
+    const dy = e.deltaMode === 1 ? e.deltaY * 32 : e.deltaY;
+    zoomAt(e.clientX, e.clientY, Math.exp(clamp(-dy * (e.ctrlKey ? .011 : .0018), -.35, .35)));
+  } else {
+    S.view.x -= e.deltaX; S.view.y -= e.deltaY; clampView(); schedule();
+  }
+}, {passive:false});
+function zoomAnimated(px, py, f){
+  stopMotion();
+  const v = S.view, k0 = v.k, k2 = clamp(v.k * f, kMin(), K_MAX), wx = (px - v.x) / v.k, wy = (py - v.y) / v.k, t0 = performance.now();
+  const step = now => {
+    const t = clamp((now - t0) / 260, 0, 1), e = 1 - Math.pow(1 - t, 3);
+    v.k = k0 + (k2 - k0) * e; v.x = px - wx * v.k; v.y = py - wy * v.k; clampView(); applyView();
+    if (t < 1) S.anim = requestAnimationFrame(step); else S.anim = null;
+  };
+  S.anim = requestAnimationFrame(step);
+}
+function clickTarget(t){
+  const n = t && t.closest && t.closest("[data-k]");
+  if (!n) return;
+  const key = n.dataset.k; SFX.open();
+  select(key);
+  const v = S.view, type = key.split(":")[0];
+  if (type === "ch" && v.k < .82) flyToKey(key, .95);
+  else if (type === "boss" && v.k < .55) flyToKey(key, .75);
+  else if (type === "side" && v.k < .5) flyToKey(key, .62);
+  else if ((type === "rd" || type === "ex") && v.k < .7) flyToKey(key, 1.1);
+}
+function hover(e){
+  const n = e.target.closest && e.target.closest("[data-k]");
+  if (!n){ hideTip(); return; }
+  const it = S.idx[n.dataset.k]; if (!it) return;
+  let k = "", t = "", m = "";
+  if (it.type === "ch"){ k = `Chapter ${it.c.num}`; t = it.c.title; m = it.c.cleared ? "cleared ✓" : it.c.started ? "in progress" : "click to explore"; }
+  else if (it.type === "rd"){ k = `Reading ${it.q.id}`; t = it.q.title; m = `${it.q.pages} · +${it.q.xp} XP${it.q.done ? " · read ✓" : ""}`; }
+  else if (it.type === "ex"){ k = `Exercise ${it.e.id} ${"★".repeat(it.e.stars)}`; t = it.e.title; m = `+${it.e.xp} XP${it.e.done ? " · done ✓" : ""}`; }
+  else if (it.type === "boss"){ k = `Boss ${roman(it.b.n)}`; t = it.b.name; m = it.b.defeated ? "defeated" : it.b.unlocked ? "ready to fight!" : `locked: clear ch ${it.b.unlock.join(", ")}`; }
+  else if (it.type === "side"){ k = "Side quest"; t = it.s.title; m = `${it.s.reading_done[0]}/${it.s.reading_done[1]} stars`; }
+  else if (it.type === "sq"){ k = `${it.s.short} · ${it.q.id}`; t = it.q.title; m = `${it.q.pages} · +${it.q.xp} XP${it.q.optional ? " · optional" : ""}${it.q.done ? " · read ✓" : ""}`; }
+  else if (it.type === "lab"){ k = `Lab ${it.e.id} ${"★".repeat(it.e.stars)}`; t = it.e.title; m = `+${it.e.xp} XP${it.e.done ? " · done ✓" : ""}`; }
+  const tip = $("#tip");
+  tip.innerHTML = `<div class="tk">${esc(k)}</div><b>${esc(t)}</b><div class="muted small">${esc(m)}</div>`;
+  tip.style.opacity = 1;
+  const x = Math.min(e.clientX + 16, innerWidth - 320), y = Math.min(e.clientY + 16, innerHeight - 90);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function hideTip(){ $("#tip").style.opacity = 0; }
+
+/* ───────────── minimap ───────────── */
+const mini = $("#mini-c"), mctx = mini.getContext("2d");
+let miniBase = null;
+function buildMiniStatic(){
+  miniBase = document.createElement("canvas"); miniBase.width = mini.width; miniBase.height = mini.height;
+  const c = miniBase.getContext("2d"), sx = mini.width / W, sy = mini.height / H;
+  c.fillStyle = "#0c1a2c"; c.fillRect(0, 0, mini.width, mini.height);
+  const g = c.createLinearGradient(0, 0, 0, SKY * sy); g.addColorStop(0, "#04060f"); g.addColorStop(1, "#101c3c");
+  c.fillStyle = g; c.fillRect(0, 0, mini.width, SKY * sy);
+  S.blobs.forEach(b => { c.fillStyle = BIOME[b[3]]; c.beginPath(); c.arc(b[0] * sx, b[1] * sy, b[2] * sx, 0, 6.283); c.fill(); });
+}
+function drawMini(){
+  if (!miniBase) return;
+  mctx.drawImage(miniBase, 0, 0);
+  const sx = mini.width / W, sy = mini.height / H;
+  mctx.strokeStyle = "rgba(230,192,104,.55)"; mctx.lineWidth = 2; mctx.beginPath();
+  ROAD_SAMPLES.forEach((p, i) => i ? mctx.lineTo(p[0] * sx, p[1] * sy) : mctx.moveTo(p[0] * sx, p[1] * sy)); mctx.stroke();
+  STOPS.forEach(([type, id, x, y]) => {
+    let col = "#6c7588";
+    if (type === "ch"){ const c = S.idx["ch:" + id].c; col = c.cleared ? "#e6c068" : id === S.st.current ? "#5fd4c0" : c.started ? "#3fa596" : "#6c7588"; }
+    else { const b = S.idx["boss:" + id].b; col = b.defeated ? "#77707e" : b.unlocked ? "#ef6a5f" : "#7b3a36"; }
+    mctx.fillStyle = col; mctx.beginPath(); mctx.arc(x * sx, y * sy, type === "ch" ? 5 : 6, 0, 6.283); mctx.fill();
+  });
+  S.st.side.forEach(s => { const p = S.nodes["side:" + s.key]; if (!p) return; mctx.fillStyle = s.finished ? "#f6dc93" : s.started ? "#b6c3ff" : "#56608a"; mctx.beginPath(); mctx.arc(p[0] * sx, p[1] * sy, 6, 0, 6.283); mctx.fill(); });
+  S.miniFrame = mctx.getImageData(0, 0, mini.width, mini.height);
+  drawMiniView();
+}
+function drawMiniView(){
+  if (!S.miniFrame) return;
+  mctx.putImageData(S.miniFrame, 0, 0);
+  const v = S.view, sx = mini.width / W, sy = mini.height / H;
+  const x0 = -v.x / v.k, y0 = -v.y / v.k, w = innerWidth / v.k, h = innerHeight / v.k;
+  mctx.strokeStyle = "#ffffff"; mctx.lineWidth = 2; mctx.strokeRect(x0 * sx, y0 * sy, w * sx, h * sy);
+}
+function miniJump(e){
+  const r = mini.getBoundingClientRect();
+  const wx = (e.clientX - r.left) / r.width * W, wy = (e.clientY - r.top) / r.height * H;
+  stopMotion();
+  const [sx, sy] = viewCenter(); S.view.x = sx - wx * S.view.k; S.view.y = sy - wy * S.view.k; clampView(); applyView();
+}
+let miniDrag = false;
+mini.addEventListener("pointerdown", e => { miniDrag = true; mini.setPointerCapture(e.pointerId); miniJump(e); });
+mini.addEventListener("pointermove", e => { if (miniDrag) miniJump(e); });
+mini.addEventListener("pointerup", () => miniDrag = false);
+
+/* ───────────── HUD + next-up ───────────── */
+function renderHUD(){
+  const p = S.st.player;
+  $("#lvl-n").textContent = p.level;
+  $("#lvl-name").textContent = `Lv ${p.level} · ${p.title}`;
+  $("#xp-fill").style.width = (100 * clamp((p.xp - p.lo) / (p.hi - p.lo), 0, 1)).toFixed(1) + "%";
+  $("#xp-text").textContent = `${(p.xp - p.lo).toLocaleString()} / ${(p.hi - p.lo).toLocaleString()} XP`;
+  $("#xp-next").textContent = `→ ${p.next_title}`;
+  $("#streak-n").textContent = p.streak;
+  $("#streak-s").textContent = (p.streak === 1 ? "day streak" : "day streak") + (p.freezes ? ` · ❄${p.freezes}` : "");
+  $("#p-streak").classList.toggle("risk", p.at_risk);
+  $("#p-streak").title = p.at_risk ? "Study today to keep your streak alive!" : `Best: ${p.best} days`;
+  $("#goal-n").textContent = `${p.today_xp}/${p.goal}`;
+  $("#goal-ring").setAttribute("stroke-dasharray", `${(88 * clamp(p.today_xp / p.goal, 0, 1)).toFixed(1)} 88`);
+  $("#book-n").textContent = Math.round(p.book_frac * 100) + "%";
+  $("#badge-n").textContent = S.st.badges.filter(b => b.earned).length;
+  updateFocus();
+}
+function updateFocus(){
+  const b = $("#b-focus"), s = S.st && S.st.session;
+  b.classList.toggle("on", !!s);
+  if (s){
+    const ms = Date.now() - new Date(s.start).getTime(), m = Math.max(0, Math.floor(ms / 60000)), sec = Math.max(0, Math.floor(ms / 1000) % 60);
+    $("#focus-t").textContent = `${m >= 60 ? Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0") : m}:${String(sec).padStart(2, "0")} · stop`;
+  } else $("#focus-t").textContent = "Start focus";
+}
+setInterval(updateFocus, 1000);
+function renderNext(){
+  const n = S.st.next, out = [];
+  if (n.read) out.push(`<div class="nb card"><div class="nb-txt"><div class="nb-k">📖 Next read</div><div class="nb-t">${esc(n.read.id)} · ${esc(n.read.title)}</div><div class="nb-m">${esc(n.read.pages)} · +${n.read.xp} XP</div></div>
+    <div class="acts"><button class="btn ghost sm" data-act="locate" data-key="rd:${esc(n.read.id)}" title="Show on map">⌖</button>${bookBtn("main", n.read, "📖", "btn ghost sm")}<button class="btn sm" data-act="read" data-id="${esc(n.read.id)}">Mark read</button></div></div>`);
+  if (n.ex) out.push(`<div class="nb card"><div class="nb-txt"><div class="nb-k">⚔ Next exercise ${"★".repeat(n.ex.stars)}</div><div class="nb-t">${esc(n.ex.id)} · ${esc(n.ex.title)}</div><div class="nb-m">+${n.ex.xp} XP${n.ex.path ? " · " + esc(n.ex.path.split("/").pop()) : ""}</div></div>
+    <div class="acts"><button class="btn ghost sm" data-act="locate" data-key="ex:${esc(n.ex.id)}" title="Show on map">⌖</button>${n.ex.path ? `<button class="btn ghost sm" data-act="open" data-path="${esc(n.ex.path)}">Open</button>` : ""}<button class="btn teal sm" data-act="claim" data-id="${esc(n.ex.id)}">Claim</button></div></div>`);
+  $("#next").innerHTML = out.join("");
+}
+
+/* ───────────── panel ───────────── */
+function select(key){
+  S.sel = key;
+  document.querySelectorAll(".node.sel").forEach(n => n.classList.remove("sel"));
+  document.querySelectorAll(`[data-k="${CSS.escape(key)}"]`).forEach(n => n.classList.add("sel"));
+  renderPanel(key);
+  document.body.classList.add("panel-open");
+}
+function closePanel(){ document.body.classList.remove("panel-open"); document.querySelectorAll(".node.sel").forEach(n => n.classList.remove("sel")); S.sel = null; }
+function fmtDate(iso){ if (!iso) return ""; const d = new Date(iso); return d.toLocaleDateString(undefined, {month:"short", day:"numeric"}); }
+function chip(t, c = ""){ return `<span class="chip ${c}">${t}</span>`; }
+function renderPanel(key){
+  const it = S.idx[key]; if (!it) return;
+  let head = "", body = "";
+  if (it.type === "ch") [head, body] = pChapter(it.c);
+  else if (it.type === "rd") [head, body] = pReading(it.q, it.c, null);
+  else if (it.type === "ex") [head, body] = pExercise(it.e, it.c, null);
+  else if (it.type === "boss") [head, body] = pBoss(it.b);
+  else if (it.type === "side") [head, body] = pSide(it.s);
+  else if (it.type === "sq") [head, body] = pReading(it.q, null, it.s);
+  else if (it.type === "lab") [head, body] = pExercise(it.e, null, it.s);
+  $("#ph").innerHTML = head; $("#pb").innerHTML = body;
+}
+function bookBtn(key, q, text, cls = "btn ghost"){
+  return `<button class="${cls}" data-act="pdf" data-key="${esc(key)}" data-pdf="${q ? q.pdf : 1}" data-label="${q ? esc(q.page) : ""}" data-quest="${q ? esc(q.id) : ""}">${text}</button>`;
+}
+function rowRead(q, prefix){
+  return `<div class="row ${q.done ? "done" : ""}" data-sel="${prefix}:${esc(q.id)}"><span class="tk">${q.done ? "✓" : "○"}</span><span class="id">${esc(q.id)}</span><span class="tt" title="${esc(q.title)}">${esc(q.title)}${q.optional ? ' <span class="muted small">(opt)</span>' : ""}</span><span class="pg">${esc(q.pages)}</span>
+    ${q.done ? `<button class="btn ghost sm" data-act="undo" data-id="${esc(q.id)}" title="Mark as unread">↶</button>` : `<button class="btn sm" data-act="read" data-id="${esc(q.id)}">+${q.xp}</button>`}</div>`;
+}
+function rowEx(e, prefix){
+  return `<div class="row xd ${e.done ? "done" : ""}" data-sel="${prefix}:${esc(e.id)}"><span class="tk">${e.done ? (e.clean ? "✦" : "✓") : "◇"}</span><span class="id">${esc(e.id)}</span><span class="tt" title="${esc(e.title)}">${"★".repeat(e.stars)} ${esc(e.title)}${e.optional ? ' <span class="muted small">(opt)</span>' : ""}</span>
+    ${e.done ? `<span class="pg">${e.clean ? "clean ✨" : "done"}</span>` : `<button class="btn teal sm" data-act="claim" data-id="${esc(e.id)}">+${e.xp}</button>`}</div>`;
+}
+function pChapter(c){
+  const rd = c.reading.filter(q => q.done).length, req = c.exercises.filter(e => !e.optional), ed = req.filter(e => e.done).length;
+  const tot = c.reading.length + req.length, frac = tot ? (rd + ed) / tot : 0;
+  const P = (S.st.book.parts || []).find(p => p.chapters.includes(c.num));
+  const part = c.optional ? "optional" : P ? P.name : "";
+  const status = c.cleared ? chip(`🏁 cleared ${fmtDate(c.cleared)}`, "gold") : c.started ? chip("in progress", "ok") : c.num === S.st.current ? chip("you are here", "ok") : chip(c.optional ? "optional" : "unexplored");
+  const head = `<div class="kick">Chapter ${c.num}${part ? " · " + esc(part) : ""}</div><h2>${esc(c.title)}</h2><div class="chips">${status}${chip("📖 " + esc(c.pages))}${chip(`📝 notes: ${c.notes_lines} line${c.notes_lines === 1 ? "" : "s"}${c.scribe ? " · bonus ✓" : ` (${Math.max(0, 10 - c.notes_lines)} to bonus)`}`)}</div>`;
+  let b = `<div class="prog"><i style="width:${(frac * 100).toFixed(1)}%"></i></div><div class="small muted">${rd}/${c.reading.length} read${req.length ? ` · ${ed}/${req.length} exercises` : ""}${c.cleared ? "" : ` · clear it for +100 XP`}</div>
+    <div class="acts">${bookBtn("main", c.reading.find(q => !q.done) || c.reading[0], "📖 Open the book", "btn")}<button class="btn ghost local-only" data-act="open" data-path="${esc(c.notes)}">📝 Open notes</button></div>`;
+  b += `<div class="sec"><h3>Reading quests</h3>${c.reading.map(q => rowRead(q, "rd")).join("")}</div>`;
+  if (c.exercises.length) b += `<div class="sec"><h3>Exercises${c.ex_page ? ` · book p.${c.ex_page}` : ""}</h3>${c.exercises.map(e => rowEx(e, "ex")).join("")}</div>`;
+  S.st.bosses.filter(x => Math.max(...x.unlock) === c.num).forEach(x => { b += `<div class="hint">🐉 Clearing this chapter${x.unlock.length > 1 ? ` (with ch ${x.unlock.filter(n => n !== c.num).join(", ")})` : ""} unlocks <a href="#" data-act="selfly" data-key="boss:${x.n}" style="color:var(--red)">${esc(x.name)}</a>.</div>`; });
+  S.st.side.filter(s => s.pairs.includes(c.num) && s.pairs.length < 10).forEach(s => { b += `<div class="hint">🗺️ Pairs well with the side quest <a href="#" data-act="selfly" data-key="side:${s.key}" style="color:var(--ice)">${esc(s.short)}</a>.</div>`; });
+  return [head, b];
+}
+function pReading(q, c, s){
+  const where = c ? `Chapter ${c.num} · ${esc(c.title)}` : `${esc(s.short)} · side quest`;
+  const head = `<div class="kick">Reading quest ${esc(q.id)}</div><h2>${esc(q.title)}</h2><div class="chips">${q.done ? chip(`✓ read ${fmtDate(q.done)}`, "gold") : chip("not read yet")}${chip("📖 " + esc(q.pages))}${chip(`+${q.xp} XP`, "gold")}${q.optional ? chip("optional") : ""}</div>`;
+  let b = `<p class="task muted">${where}. Read the pages, jot what matters in your notes, then mark it read.</p>
+    <div class="acts">${q.done ? `<button class="btn ghost" data-act="undo" data-id="${esc(q.id)}">↶ Mark unread</button>` : `<button class="btn" data-act="read" data-id="${esc(q.id)}">✓ Mark read · +${q.xp} XP</button>`}
+    ${bookBtn(s ? s.key : "main", q, `📖 Open book at ${esc(q.pages.split("–")[0])}`)}
+    <button class="btn ghost local-only" data-act="open" data-path="${esc(c ? c.notes : s.notes)}">📝 Notes</button></div>`;
+  b += `<div class="acts"><button class="btn ghost sm" data-act="selfly" data-key="${c ? "ch:" + c.num : "side:" + s.key}">← ${c ? "Chapter " + c.num : esc(s.short)}</button></div>`;
+  return [head, b];
+}
+function pExercise(e, c, s){
+  const isLab = e.kind === "lab", kind = isLab ? "Lab" : "Exercise";
+  const head = `<div class="kick">${kind} ${esc(e.id)} · ${"★".repeat(e.stars)}</div><h2>${esc(e.title)}</h2><div class="chips">${e.done ? chip(`✓ done ${fmtDate(e.done)}`, "ok") : chip("not done")}${e.done && e.kind === "code" ? (e.clean ? chip("✨ clean build", "gold") : chip("warnings: fix for +10", "warn")) : ""}${chip(`+${e.xp} XP`, "gold")}${e.optional ? chip("optional") : ""}${e.bonus ? chip("bonus quest") : ""}${e.boost ? chip("needs Boost", "warn") : ""}</div>`;
+  let b = `<p class="task">${md(e.task)}</p>`;
+  if (e.path) b += `<code class="path">${esc(e.path)}</code>`;
+  const canClaim = !e.done || (e.kind === "code" && !e.clean);
+  b += `<div class="acts">`;
+  if (e.path) b += `<button class="btn ghost" data-act="open" data-path="${esc(e.path)}">✎ Open file</button><button class="btn ghost" data-act="run" data-id="${esc(e.id)}">▶ Run</button>`;
+  if (canClaim) b += `<button class="btn teal" data-act="claim" data-id="${esc(e.id)}">${e.kind === "code" ? (e.done ? "✨ Re-check for clean bonus" : "⚔ Compile-check & claim") : "✓ Claim"}</button>`;
+  if (e.done) b += `<button class="btn ghost" data-act="undo" data-id="${esc(e.id)}">↶ Undo</button>`;
+  b += `</div>`;
+  if (e.kind === "code") b += `<div class="hint">Claiming compiles your file with <code>-Wall -Wextra</code>. No XP for an empty file or a build error; zero warnings earns +10. Programs that read input are best run from the terminal: <code>./quest run ${esc(e.id)}</code></div>`;
+  else b += `<div class="hint">No compile check for this one. Claim it when you've genuinely done it.</div>`;
+  b += `<div class="acts"><button class="btn ghost sm" data-act="selfly" data-key="${c ? "ch:" + c.num : "side:" + s.key}">← ${c ? "Chapter " + c.num : esc(s.short)}</button></div>`;
+  return [head, b];
+}
+function pBoss(x){
+  const done = x.goals.filter(g => g.done).length, total = x.goals.length, hp = total - done;
+  const state = x.defeated ? chip(`💀 defeated ${fmtDate(x.defeated)}`, "gold") : x.unlocked ? chip("⚔ ready to fight", "bad") : chip(`🔒 clear ch ${x.unlock.join(", ")}`);
+  const kind = !x.codes ? "no code: tick every box" : x.build === "tsan" ? "ThreadSanitizer" : x.build === "sanitize" ? "ASan + UBSan" : x.build === "boost" ? "needs Boost" : "plain build";
+  const head = `<div class="kick">Boss ${roman(x.n)} · after chapters ${x.unlock.join(", ")}</div><h2>${esc(x.name)}</h2><div class="chips">${state}${chip(`+${x.xp} XP`, "gold")}${chip(kind)}</div>`;
+  let b = `<p class="task">${md(x.pitch)}</p>`;
+  if (!x.defeated) b += `<div class="small muted" style="margin-top:6px">Boss HP</div><div class="prog hp"><i style="width:${total ? (hp / total * 100).toFixed(1) : 100}%"></i></div><div class="small muted">${hp}/${total} HP left · tick each condition as you finish it</div>`;
+  b += `<div class="sec"><h3>Win conditions</h3>${x.goals.map((g, i) => `<div class="goal ${g.done ? "on" : ""}" data-act="tick" data-n="${x.n}" data-i="${i}" data-on="${g.done ? 0 : 1}"><span class="bx">${g.done ? "✓" : ""}</span><span>${md(g.text)}</span></div>`).join("")}</div>`;
+  b += `<div class="acts"><button class="btn ghost" data-act="open" data-path="${esc(x.readme)}">📜 Open spec</button>${x.main ? `<button class="btn ghost" data-act="open" data-path="${esc(x.main)}">✎ Open ${esc(x.main.split("/").pop())}</button>` : ""}
+    <button class="btn red" data-act="attack" data-n="${x.n}" ${!x.unlocked || x.defeated ? "disabled" : ""}>⚔ Attack</button></div>`;
+  b += `<div class="hint">${x.unlocked ? (x.codes ? "Attacking builds your project (with sanitizers where noted) and runs its tests. The boss falls when the build passes and every box is ticked." : "Tick each win condition as you finish it, then attack. The boss falls once every box is ticked.") : `Locked until you clear chapters ${x.unlock.join(", ")}. You can read the spec and plan ahead now.`}</div>`;
+  return [head, b];
+}
+function pSide(s){
+  const head = `<div class="kick">Side quest · ${esc(s.author)}</div><h2>${esc(s.title)}</h2><div class="chips">${s.finished ? chip(`📗 finished ${fmtDate(s.finished)}`, "gold") : s.started ? chip("in progress", "ok") : chip("not started")}${chip(`${s.reading_done[0]}/${s.reading_done[1]} read`)}${chip(`${s.labs_done[0]}/${s.labs_done[1]} labs`)}${chip(`+${s.xp} XP when finished`, "gold")}</div>`;
+  const tot = s.reading_done[1] + s.labs_done[1], got = s.reading_done[0] + s.labs_done[0];
+  let b = `<div class="prog teal"><i style="width:${tot ? (got / tot * 100).toFixed(1) : 0}%"></i></div><div class="hint">${md(s.note)}</div><div class="hint">🧭 Best paired with: ${md(s.pairs_text)}.</div>
+    <div class="acts">${bookBtn(s.key, s.chapters.flatMap(sc => sc.reading).find(q => !q.done && !q.optional) || s.chapters[0].reading[0], "📖 Open the book", "btn")}<button class="btn ghost" data-act="open" data-path="${esc(s.notes)}">📝 Notes (${s.notes_lines})</button></div>`;
+  b += `<div class="sec"><h3>Labs</h3>${s.labs.map(l => rowEx(l, "lab")).join("")}</div>`;
+  s.chapters.forEach(sc => { b += `<div class="sec"><h3>Ch ${sc.num} · ${esc(sc.title)}${sc.optional ? " · optional" : ""}</h3>${sc.reading.map(q => rowRead(q, "sq")).join("")}</div>`; });
+  return [head, b];
+}
+
+/* ───────────── actions (event delegation) ───────────── */
+document.addEventListener("click", async e => {
+  const a = e.target.closest("[data-act]");
+  if (!a){
+    const row = e.target.closest("[data-sel]");
+    if (row){ const key = row.dataset.sel; select(key); flyToKey(key, Math.max(S.view.k, key.startsWith("sq") || key.startsWith("lab") ? .9 : 1.1)); }
+    return;
+  }
+  e.preventDefault();
+  const d = a.dataset, act = d.act;
+  if (act === "read") run(["read", d.id], findKey(d.id));
+  else if (act === "undo") run(["undo", d.id], findKey(d.id));
+  else if (act === "claim") run(["done", d.id], findKey(d.id));
+  else if (act === "run") run(["run", d.id], findKey(d.id));
+  else if (act === "attack") run(["boss", d.n], "boss:" + d.n);
+  else if (act === "open"){ try { await api("/api/open", {path:d.path}); toast(`✎ Opening <b>${esc(d.path.split("/").pop())}</b> in your editor`); } catch (err){ toast("Couldn't open: " + esc(err.message)); } }
+  else if (act === "pdf") openBook(d.key || "main", +d.pdf || 1, d.label, d.quest);
+  else if (act === "ipad") ipadModal();
+  else if (act === "tick"){ SFX.tick(); try { await api("/api/tick", {n:+d.n, i:+d.i, on:d.on === "1"}); await refresh(false); } catch (err){ toast(esc(err.message)); } }
+  else if (act === "locate" || act === "selfly"){ select(d.key); flyToKey(d.key, d.key.startsWith("ch") ? .95 : d.key.startsWith("side") ? .62 : d.key.startsWith("boss") ? .8 : 1.15); }
+  else if (act === "close") closePanel();
+  else if (act === "zin"){ const [x, y] = viewCenter(); zoomAnimated(x, y, 1.5); }
+  else if (act === "zout"){ const [x, y] = viewCenter(); zoomAnimated(x, y, 1 / 1.5); }
+  else if (act === "home") homeView();
+  else if (act === "worldview") worldView();
+  else if (act === "focus") focusToggle();
+  else if (act === "journal") journalModal();
+  else if (act === "badges") badgesModal();
+  else if (act === "chronicle") chronicleModal();
+  else if (act === "help") helpModal();
+  else if (act === "undoLast") run(["undo"]);
+  else if (act === "sound"){ store.mute = !store.mute; saveStore(); $("#b-sound").textContent = store.mute ? "🔇" : "🔊"; if (!store.mute) SFX.tick(); }
+  else if (act === "toggleOut"){ const pre = $("#result pre"); if (pre){ const hidden = pre.style.display === "none"; pre.style.display = hidden ? "" : "none"; a.textContent = hidden ? "Hide" : "Details"; } }
+  else if (act === "closeOut") $("#result").classList.remove("show");
+  else if (act === "modalClose") closeModal();
+  else if (act === "saveLog"){ const t = $("#log-t").value.trim(); if (t){ closeModal(); run(["log", t]); } }
+  else if (act === "stopSave"){ const t = $("#stop-t").value.trim(); closeModal(); run(t ? ["stop", t] : ["stop"]); }
+});
+const IS_LOCAL = ["127.0.0.1", "localhost", "[::1]", "::1"].includes(location.hostname);
+if (!IS_LOCAL) document.body.classList.add("remote");
+async function openBook(key, pdf, label, quest){
+  if (!IS_LOCAL){ location.href = `/read?book=${encodeURIComponent(key)}&page=${pdf}${quest ? "&quest=" + encodeURIComponent(quest) : ""}`; return; }
+  try {
+    const r = await api("/api/pdf", {key, page:pdf, quest});
+    if (r.where === "ipad") toast(`📲 On your iPad in <b>${r.ms} ms</b> · page <b>${esc(label || pdf)}</b>`);
+    else if (r.missed) toast(`📲 Your iPad didn't answer, so the book opened on your Mac. Jump to page <b>${esc(label || pdf)}</b> with ⌥⌘G in Preview.`);
+    else toast(`📖 Opening the book on your Mac. Jump to page <b>${esc(label || pdf)}</b> with ⌥⌘G in Preview.${S.ipad && S.ipad.lan ? "" : ` <span class="muted">Reading on an iPad? Click 📲.</span>`}`);
+  } catch (err){ toast("Couldn't open the book: " + esc(err.message)); }
+}
+function loadScript(src){
+  return new Promise((ok, bad) => {
+    if ([...document.scripts].some(s => s.src === src)) return ok();
+    const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = bad; document.head.appendChild(s);
+  });
+}
+async function pairPoll(addrs){
+  if (!IS_LOCAL) return;
+  try { S.ipad = await api("/api/pair" + (addrs ? "?addrs=1" : "")); $("#ipad-live").classList.toggle("on", !!(S.ipad.lan && S.ipad.connected)); } catch (e) {}
+}
+let pairTimer = null;
+async function ipadModal(){
+  await pairPoll(true);
+  const p = S.ipad;
+  if (!p) { toast("Couldn't reach the world server."); return; }
+  if (!p.lan){
+    openModal(`<h2>📲 Read on your iPad</h2><p class="muted">Your iPad can show the book and jump to the right page whenever you click <b>Open the book</b> here.</p>
+      <div class="hint">1. Stop the world in your terminal with <kbd>Ctrl</kbd>-<kbd>C</kbd>.<br>2. Start it again with <code>./quest world --ipad</code><br>3. Click 📲 and scan the QR code with your iPad's camera.</div>
+      <div class="acts"><button class="btn ghost" data-act="modalClose">Got it</button></div>`);
+    return;
+  }
+  const addrs = p.addresses && p.addresses.length ? p.addresses : [{label:"Wi-Fi", url:p.url}];
+  openModal(`<h2>📲 Read on your iPad</h2><p class="muted">Point the iPad's camera at this code. Both devices must share a network. It opens the reader; after that, <b>Open the book</b> here turns the iPad to that page.</p>
+    <div class="chips" id="addr-pick" style="justify-content:center;margin-top:12px">${addrs.map((a, i) => `<button class="btn ${i ? "ghost" : ""} sm" data-addr="${i}">${esc(a.label)}</button>`).join("")}</div>
+    <div id="qr" style="background:#fff;padding:14px;border-radius:14px;width:max-content;margin:14px auto;min-width:150px;min-height:150px;display:grid;place-items:center;color:#333;font-size:12px">loading…</div>
+    <code class="path" id="qr-url">${esc(addrs[0].url)}</code>
+    <div class="hint" id="pair-st">${p.connected ? "✅ iPad connected." : "⏳ Waiting for your iPad…"}</div>
+    <details class="hint"><summary style="cursor:pointer">iPad can't open it?</summary><div style="margin-top:8px;line-height:1.55">
+      • Campus and office Wi-Fi often blocks devices from talking to each other. Turn on your iPhone's <b>Personal Hotspot</b> and join it from both the Mac and the iPad, then reopen 📲 and pick the hotspot address.<br>
+      • A USB-C cable alone doesn't connect Safari to the Mac. A cellular iPad can share its <b>Personal Hotspot</b> over the cable; when you do, a hotspot address shows up above.<br>
+      • Try the <b>Bonjour name</b> option if the IP address changes.</div></details>
+    <div class="hint">Tip: on the iPad, tap Share → <b>Add to Home Screen</b> for a full-screen Quest Reader app.</div>
+    <div class="acts"><button class="btn ghost" data-act="modalClose">Done</button></div>`);
+  let qrReady = false;
+  const draw = i => {
+    $("#qr-url").textContent = addrs[i].url;
+    document.querySelectorAll("#addr-pick [data-addr]").forEach(b => b.classList.toggle("ghost", +b.dataset.addr !== i));
+    if (!qrReady) return;
+    const qr = qrcode(0, "M"); qr.addData(addrs[i].url); qr.make();
+    $("#qr").innerHTML = qr.createSvgTag(5, 0);
+  };
+  $("#addr-pick").addEventListener("click", e => { const b = e.target.closest("[data-addr]"); if (b) draw(+b.dataset.addr); });
+  try {
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js");
+    qrReady = true; draw(0);
+  } catch (e){ $("#qr").textContent = "The QR code needs internet. Type the address below into Safari instead."; }
+  clearInterval(pairTimer);
+  pairTimer = setInterval(async () => {
+    if (!$("#modal").classList.contains("show") || !$("#pair-st")){ clearInterval(pairTimer); return; }
+    await pairPoll(false);
+    if (S.ipad) $("#pair-st").innerHTML = S.ipad.connected ? "✅ iPad connected. Click <b>Open the book</b> on any quest to send its page there." : "⏳ Waiting for your iPad…";
+  }, 2000);
+}
+function findKey(id){
+  for (const p of ["rd", "ex", "sq", "lab"]) if (S.idx[p + ":" + id]) return p + ":" + id;
+  return S.sel;
+}
+function focusToggle(){
+  if (S.st.session){
+    openModal(`<h2>End focus session</h2><p class="muted">What did you work on? This goes into journal.md with a summary of what you finished.</p>
+      <input type="text" id="stop-t" placeholder="e.g. finally understood move semantics" maxlength="300">
+      <div class="acts"><button class="btn" data-act="stopSave">⏹ Stop & log</button><button class="btn ghost" data-act="modalClose">Keep going</button></div>`);
+    setTimeout(() => $("#stop-t").focus(), 50);
+  } else run(["start"]);
+}
+function openModal(html){ $("#mbox").innerHTML = html; $("#modal").classList.add("show"); }
+function closeModal(){ $("#modal").classList.remove("show"); }
+$("#modal").addEventListener("click", e => { if (e.target.id === "modal") closeModal(); });
+function journalModal(){
+  openModal(`<h2>✎ Journal</h2><p class="muted">A line for journal.md: what clicked, what confused you, what to try next.</p><textarea id="log-t" rows="4" maxlength="900" placeholder="Today I learned…"></textarea>
+    <div class="acts"><button class="btn" data-act="saveLog">Save to journal</button><button class="btn ghost" data-act="modalClose">Cancel</button></div>`);
+  setTimeout(() => $("#log-t").focus(), 50);
+}
+function badgesModal(){
+  const bs = S.st.badges, n = bs.filter(b => b.earned).length;
+  openModal(`<h2>🏅 Badges</h2><div class="muted">${n} of ${bs.length} unlocked · +25 XP each</div><div class="bgrid">${bs.map(b => `<div class="bdg ${b.earned ? "on" : "off"}"><div class="e">${b.earned ? b.emoji : "🔒"}</div><div class="n">${esc(b.name)}</div><div class="d">${esc(b.desc)}</div>${b.earned && b.date ? `<div class="d" style="color:var(--gold)">${fmtDate(b.date)}</div>` : ""}</div>`).join("")}</div>
+    <div class="acts"><button class="btn ghost" data-act="modalClose">Close</button></div>`);
+}
+function chronicleModal(){
+  const p = S.st.player, max = Math.max(1, ...p.last14);
+  const bars = p.last14.map((v, i) => `<div title="${v} XP" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:60px"><div style="height:${(v / max * 100).toFixed(0)}%;min-height:${v ? 3 : 1}px;background:${v >= p.goal ? "var(--gold)" : v ? "#8a7a4f" : "rgba(255,255,255,.08)"};border-radius:3px"></div></div>`).join("");
+  openModal(`<h2>📜 Chronicle</h2><div class="muted">Last 14 days (gold = daily goal hit) · ${Math.floor(p.minutes / 60)}h ${p.minutes % 60}m focused · best streak ${p.best}</div>
+    <div style="display:flex;gap:4px;margin-top:14px">${bars}</div>
+    <ul class="chron">${S.st.recent.map(r => `<li><span class="t">${esc(r.at.slice(5, 16).replace("T", " "))}</span><span>${esc(r.label)}</span><span class="x">+${r.xp}</span></li>`).join("") || `<li class="muted">Nothing yet. Your adventure starts with one reading quest.</li>`}</ul>
+    <div class="acts"><button class="btn ghost" data-act="modalClose">Close</button></div>`);
+}
+function helpModal(){
+  openModal(`<h2>How to play</h2><div class="muted">Everything here runs the same commands as <code>./quest</code> in your terminal, on the same save file.</div>
+    <div class="keys">
+      <span><kbd>drag</kbd> / two-finger swipe</span><span>pan around the world</span>
+      <span>mouse wheel / pinch / <kbd>+</kbd><kbd>−</kbd></span><span>zoom (zoom in on a chapter to see its quests)</span>
+      <span><kbd>⌘</kbd> + two-finger scroll</span><span>zoom with a trackpad (plain two-finger scroll pans)</span>
+      <span><kbd>double-click</kbd></span><span>zoom in there</span>
+      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</span><span>pan</span>
+      <span><kbd>F</kbd></span><span>fly to where you are</span>
+      <span><kbd>M</kbd></span><span>whole world · <kbd>U</kbd> sky (side quests)</span>
+      <span><kbd>B</kbd> <kbd>C</kbd> <kbd>J</kbd></span><span>badges · chronicle · journal</span>
+      <span>📲</span><span>read on your iPad: "Open the book" then turns the iPad's page</span>
+      <span><kbd>Esc</kbd></span><span>close panels</span>
+    </div>
+    <div class="hint">○ gold circles are reading quests · ◇ teal diamonds are exercises (pips = difficulty) · shields are bosses · the sky holds your side-quest books as constellations (add one with <code>./quest add another.pdf</code>). Fog lifts from a chapter once you start it.</div>
+    <div class="acts"><button class="btn ghost" data-act="modalClose">Close</button></div>`);
+}
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input,textarea")){ if (e.key === "Escape") closeModal(); if (e.key === "Enter" && e.target.id === "stop-t") $("[data-act=stopSave]").click(); return; }
+  const k = e.key.toLowerCase(), P = 90;
+  if (k === "escape"){ if ($("#modal").classList.contains("show")) closeModal(); else closePanel(); }
+  else if (k === "arrowleft" || k === "a"){ S.view.x += P; clampView(); schedule(); }
+  else if (k === "arrowright" || k === "d"){ S.view.x -= P; clampView(); schedule(); }
+  else if (k === "arrowup" || k === "w"){ S.view.y += P; clampView(); schedule(); }
+  else if (k === "arrowdown" || k === "s"){ S.view.y -= P; clampView(); schedule(); }
+  else if (k === "+" || k === "="){ const [x, y] = viewCenter(); zoomAnimated(x, y, 1.4); }
+  else if (k === "-" || k === "_"){ const [x, y] = viewCenter(); zoomAnimated(x, y, 1 / 1.4); }
+  else if (k === "f") homeView();
+  else if (k === "m") worldView();
+  else if (k === "u") flyTo(W / 2, SKY / 2, Math.max(kMin(), innerWidth / W * 1.05));
+  else if (k === "b") badgesModal();
+  else if (k === "c") chronicleModal();
+  else if (k === "j"){ e.preventDefault(); journalModal(); }
+  else if (k === "?") helpModal();
+});
+
+/* ───────────── celebrations ───────────── */
+function toast(html, cls = ""){
+  const t = document.createElement("div"); t.className = "toast " + cls; t.innerHTML = html;
+  $("#toasts").appendChild(t);
+  setTimeout(() => { t.style.transition = "opacity .4s"; t.style.opacity = 0; setTimeout(() => t.remove(), 450); }, 5200);
+}
+function screenOf(key){
+  const p = S.nodes[key]; if (!p) return null;
+  const v = S.view, x = p[0] * v.k + v.x, y = p[1] * v.k + v.y;
+  return x > 0 && y > 0 && x < innerWidth && y < innerHeight ? [x, y] : null;
+}
+function xpFloat(n){
+  const at = (S.anchor && screenOf(S.anchor)) || (() => { const r = $("#xp-fill").getBoundingClientRect(); return [r.right, r.bottom + 10]; })();
+  const el = document.createElement("div"); el.className = "xpfloat"; el.textContent = `+${n} XP`;
+  el.style.left = at[0] + "px"; el.style.top = (at[1] - 30) + "px";
+  document.body.appendChild(el); setTimeout(() => el.remove(), 1700);
+}
+const queue = [];
+let showing = false;
+function bannerShow(kicker, title, sub, cls = "", sfx){ queue.push({kicker, title, sub, cls, sfx}); if (!showing) nextBanner(); }
+function nextBanner(){
+  const b = queue.shift(); if (!b){ showing = false; return; }
+  showing = true;
+  const el = $("#banner");
+  el.className = "show " + b.cls;
+  el.innerHTML = `<div class="bk">${esc(b.kicker)}</div><div class="bt">${esc(b.title)}</div>${b.sub ? `<div class="bs">${esc(b.sub)}</div>` : ""}`;
+  (b.sfx || SFX.level)();
+  burst(b.cls === "red" ? ["#ff7a6b", "#ffd2cb", "#f6dc93"] : ["#f6dc93", "#f3c74b", "#5fd4c0", "#ffffff"]);
+  setTimeout(() => { el.className = ""; setTimeout(nextBanner, 250); }, 2600);
+}
+function burst(colors){
+  const cx = innerWidth / 2, cy = innerHeight / 2;
+  for (let i = 0; i < 70; i++){
+    const s = document.createElement("div"), a = Math.random() * 6.283, d = 160 + Math.random() * 360;
+    s.className = "spark"; s.style.left = cx + "px"; s.style.top = cy + "px"; s.style.background = colors[i % colors.length];
+    s.style.setProperty("--dx", Math.cos(a) * d + "px"); s.style.setProperty("--dy", Math.sin(a) * d + "px");
+    s.style.animationDelay = (Math.random() * .15) + "s";
+    document.body.appendChild(s); setTimeout(() => s.remove(), 1700);
+  }
+}
+function celebrateDiff(a, b){
+  const dx = b.player.xp - a.player.xp;
+  if (dx > 0){ xpFloat(dx); SFX.xp(); }
+  b.chapters.forEach((c, i) => { if (c.cleared && !a.chapters[i].cleared) bannerShow("Chapter cleared", c.title, `Chapter ${c.num} · +100 XP`); });
+  b.bosses.forEach((x, i) => {
+    if (x.unlocked && !a.bosses[i].unlocked) bannerShow("A boss awakens", x.name, `Boss ${roman(x.n)} is ready to fight`, "red", SFX.boss);
+    if (x.defeated && !a.bosses[i].defeated) bannerShow("Boss defeated", x.name, `+${x.xp} XP`, "red", SFX.boss);
+  });
+  b.side.forEach((s, i) => { if (s.finished && !a.side[i].finished) bannerShow("Side quest complete", s.short, `+${s.xp} XP`); });
+  if (b.player.level > a.player.level) bannerShow("Level up", `Level ${b.player.level}`, b.player.title);
+  const had = new Set(a.badges.filter(x => x.earned).map(x => x.id));
+  b.badges.filter(x => x.earned && !had.has(x.id)).forEach((x, i) => setTimeout(() => { SFX.badge(); toast(`<span class="e">${x.emoji}</span><div><div class="k">Badge unlocked · +25 XP</div><b>${esc(x.name)}</b><div class="muted small">${esc(x.desc)}</div></div>`, "badge"); }, 400 + i * 700));
+}
+
+/* ───────────── boot ───────────── */
+addEventListener("resize", () => { clampView(); schedule(); });
+addEventListener("focus", () => refresh(true));
+setInterval(() => { if (!document.hidden) refresh(true); }, 20000);
+$("#b-sound").textContent = store.mute ? "🔇" : "🔊";
+pairPoll(); setInterval(() => { if (!document.hidden) pairPoll(); }, 5000);
+(async () => {
+  await refresh(false);
+  if (!S.st){ $("#loading .s").textContent = "Can't reach the world server. Run ./quest world in your terminal."; return; }
+  S.view.k = kMin(); clampView(); applyView();
+  $("#loading").style.opacity = 0; setTimeout(() => $("#loading").remove(), 650);
+  if (applyHash(false)) return;
+  setTimeout(homeView, 450);
+  if (!store.seenHelp){ store.seenHelp = true; saveStore(); setTimeout(() => toast("🗺️ <b>Welcome to your world.</b> Drag to pan, scroll or pinch to zoom, click anything. Press <kbd>?</kbd> for controls."), 1600); }
+})();
+</script>
+</body>
+</html>

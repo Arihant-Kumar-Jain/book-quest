@@ -1,0 +1,4966 @@
+{
+ "title": "C++ Crash Course — A Fast-Paced Introduction (Josh Lospinoso, 2019)",
+ "short": "C++ Crash Course",
+ "author": "Josh Lospinoso",
+ "pdf_match": "crash course",
+ "companion_code": "https://github.com/JLospinoso/ccc",
+ "code": "cpp",
+ "parts": {
+  "1": "The C++ Core Language",
+  "2": "C++ Libraries and Frameworks"
+ },
+ "part_xp": {
+  "1": 500,
+  "2": 1000
+ },
+ "titles": [
+  "Hello, World",
+  "Semicolon Seeker",
+  "Compiler Whisperer",
+  "Type Tamer",
+  "Pointer Wrangler",
+  "Reference Ranger",
+  "RAII Apprentice",
+  "Exception Juggler",
+  "Move Semantics Monk",
+  "Template Tinkerer",
+  "Lambda Mage",
+  "Test-Driven Knight",
+  "Smart Pointer Sage",
+  "Container Commander",
+  "Iterator Pathfinder",
+  "String Sorcerer",
+  "Algorithm Alchemist",
+  "Concurrency Conjurer",
+  "Network Navigator",
+  "Crash Course Conqueror"
+ ],
+ "chapters": [
+  {
+   "num": 0,
+   "title": "An Overture to C Programmers",
+   "start": 39,
+   "end": 58,
+   "part": 0,
+   "reading": [
+    {
+     "title": "Upgrading to Super C",
+     "page": 41,
+     "end": 47,
+     "id": "0.1",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "C++ Themes",
+     "page": 48,
+     "end": 57,
+     "id": "0.2",
+     "pages": 10,
+     "xp": 35
+    }
+   ],
+   "ex_page": null,
+   "dir": "ch00_overture_for_c_programmers",
+   "optional": true,
+   "exercises": []
+  },
+  {
+   "num": 1,
+   "title": "Up and Running",
+   "start": 61,
+   "part": 1,
+   "end": 88,
+   "reading": [
+    {
+     "title": "The Structure of a Basic C++ Program + The Compiler Tool Chain",
+     "page": 62,
+     "end": 70,
+     "id": "1.1",
+     "pages": 9,
+     "xp": 32
+    },
+    {
+     "title": "Bootstrapping C++",
+     "page": 71,
+     "end": 78,
+     "id": "1.2",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Debugging",
+     "page": 79,
+     "end": 85,
+     "id": "1.3",
+     "pages": 7,
+     "xp": 26
+    }
+   ],
+   "ex_page": 86,
+   "dir": "ch01_up_and_running",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "1-1",
+     "kind": "code",
+     "stars": 1,
+     "file": "01-01_absolute_value.cpp",
+     "title": "absolute_value()",
+     "task": "Write an absolute_value(int) function and print a few results from main (Listing 1-9 is the starting shape).",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "1-2",
+     "kind": "run",
+     "stars": 1,
+     "file": "01-01_absolute_value.cpp",
+     "title": "Try different inputs",
+     "task": "Run 1-1 with negative, zero and positive inputs. Did every result match your expectation?",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "1-3",
+     "kind": "debug",
+     "stars": 1,
+     "file": "01-01_absolute_value.cpp",
+     "title": "Step through it in a debugger",
+     "task": "Build 1-1 with debug info and step through it line by line in LLDB (`lldb .build/1-1`), Xcode or VS Code.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "1-4",
+     "kind": "code",
+     "stars": 1,
+     "file": "01-04_sum.cpp",
+     "title": "sum()",
+     "task": "Add a two-argument sum(int, int) and exercise it from main.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "1-5",
+     "kind": "read",
+     "stars": 1,
+     "file": null,
+     "title": "Join the C++ community",
+     "task": "Look around CppCast and the CppCon / C++Now talk archives on YouTube; bookmark cppreference.com.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "1-6",
+     "kind": "read",
+     "stars": 1,
+     "file": null,
+     "title": "Get the standard (draft)",
+     "task": "Download a free working draft of the C++17 standard (N4659) and learn how [section.names] citations work.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 2,
+   "title": "Types",
+   "start": 89,
+   "part": 1,
+   "end": 124,
+   "reading": [
+    {
+     "title": "Fundamental Types: Integer Types",
+     "page": 89,
+     "end": 92,
+     "id": "2.1",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Fundamental Types: Floating-Point Types → Boolean Types",
+     "page": 93,
+     "end": 97,
+     "id": "2.2",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Fundamental Types: The std::byte Type → void",
+     "page": 98,
+     "end": 100,
+     "id": "2.3",
+     "pages": 3,
+     "xp": 14
+    },
+    {
+     "title": "Arrays",
+     "page": 100,
+     "end": 106,
+     "id": "2.4",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "User-Defined Types",
+     "page": 107,
+     "end": 111,
+     "id": "2.5",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Classes: Methods + Access Controls",
+     "page": 112,
+     "end": 115,
+     "id": "2.6",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Classes: Constructors → The Destructor",
+     "page": 116,
+     "end": 122,
+     "id": "2.7",
+     "pages": 7,
+     "xp": 26
+    }
+   ],
+   "ex_page": 123,
+   "dir": "ch02_types",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "2-1",
+     "kind": "code",
+     "stars": 1,
+     "file": "02-01_calculator.cpp",
+     "title": "enum class Operation",
+     "task": "Define an Operation enum class with four arithmetic operations.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "2-2",
+     "kind": "code",
+     "stars": 1,
+     "file": "02-01_calculator.cpp",
+     "title": "Calculator struct",
+     "task": "Give Calculator a single constructor that takes an Operation.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "2-3",
+     "kind": "code",
+     "stars": 1,
+     "file": "02-01_calculator.cpp",
+     "title": "calculate(a, b)",
+     "task": "Add a method that applies the stored operation to two ints.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "2-4",
+     "kind": "code",
+     "stars": 1,
+     "file": "02-01_calculator.cpp",
+     "title": "Initialization zoo",
+     "task": "Construct Calculators every way you know (braces, equals, parens...) and note which forms work.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 3,
+   "title": "Reference Types",
+   "start": 125,
+   "part": 1,
+   "end": 146,
+   "reading": [
+    {
+     "title": "Pointers",
+     "page": 125,
+     "end": 134,
+     "id": "3.1",
+     "pages": 10,
+     "xp": 35
+    },
+    {
+     "title": "References + Usage of Pointers and References + auto Type Deduction",
+     "page": 135,
+     "end": 143,
+     "id": "3.2",
+     "pages": 9,
+     "xp": 32
+    }
+   ],
+   "ex_page": 144,
+   "dir": "ch03_reference_types",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "3-1",
+     "kind": "read",
+     "stars": 1,
+     "file": null,
+     "title": "Code Red (CVE-2001-0500)",
+     "task": "Read how a buffer overflow in IIS became the Code Red worm. Note one lesson in your journal.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "3-2",
+     "kind": "code",
+     "stars": 2,
+     "file": "03-02_bounds_checked.cpp",
+     "title": "Bounds-checked read/write",
+     "task": "Extend Listing 3-6 with read_from / write_to helpers that reject out-of-range indices.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "3-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "03-03_doubly_linked_list.cpp",
+     "title": "Doubly linked list",
+     "task": "Give Listing 3-9's Element a previous pointer and insert_before; walk the list both ways.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "3-4",
+     "kind": "code",
+     "stars": 1,
+     "file": "03-04_auto_everywhere.cpp",
+     "title": "auto everywhere",
+     "task": "Rewrite Listing 3-11 without writing a single explicit type.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "3-5",
+     "kind": "read",
+     "stars": 1,
+     "file": null,
+     "title": "const & auto audit",
+     "task": "Re-scan Chapter 2's listings: which methods could be const, where would auto help? Put findings in notes.md.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 4,
+   "title": "The Object Life Cycle",
+   "start": 147,
+   "part": 1,
+   "end": 190,
+   "reading": [
+    {
+     "title": "An Object’s Storage Duration + Tracing the Object Life Cycle",
+     "page": 147,
+     "end": 155,
+     "id": "4.1",
+     "pages": 9,
+     "xp": 32
+    },
+    {
+     "title": "Exceptions",
+     "page": 156,
+     "end": 164,
+     "id": "4.2",
+     "pages": 9,
+     "xp": 32
+    },
+    {
+     "title": "A SimpleString Class",
+     "page": 165,
+     "end": 172,
+     "id": "4.3",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Copy Semantics",
+     "page": 173,
+     "end": 179,
+     "id": "4.4",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Move Semantics",
+     "page": 180,
+     "end": 187,
+     "id": "4.5",
+     "pages": 8,
+     "xp": 29
+    }
+   ],
+   "ex_page": 189,
+   "dir": "ch04_object_life_cycle",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "4-1",
+     "kind": "code",
+     "stars": 1,
+     "file": "04-01_timer_class.cpp",
+     "title": "TimerClass birth time",
+     "task": "TimerClass stores the time it was constructed.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "4-2",
+     "kind": "code",
+     "stars": 1,
+     "file": "04-01_timer_class.cpp",
+     "title": "Report age on destruction",
+     "task": "On destruction, print how long the timer lived.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "4-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "04-01_timer_class.cpp",
+     "title": "Copy semantics",
+     "task": "Add copy constructor + copy assignment; copies share the original timestamp.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "4-4",
+     "kind": "code",
+     "stars": 2,
+     "file": "04-01_timer_class.cpp",
+     "title": "Move semantics",
+     "task": "Add move constructor + move assignment; a moved-from timer must stay silent when destroyed.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "4-5",
+     "kind": "code",
+     "stars": 1,
+     "file": "04-01_timer_class.cpp",
+     "title": "Named timers",
+     "task": "Accept a name at construction and include it in the destructor's output.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "4-6",
+     "kind": "code",
+     "stars": 1,
+     "file": "04-01_timer_class.cpp",
+     "title": "Time real work",
+     "task": "Move a timer into a function that does heavy math; confirm the output makes sense.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "4-7",
+     "kind": "code",
+     "stars": 3,
+     "file": "04-07_simple_string.cpp",
+     "title": "SimpleString from memory",
+     "task": "Re-implement Listing 4-38's SimpleString without peeking at the book.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 5,
+   "title": "Runtime Polymorphism",
+   "start": 191,
+   "part": 1,
+   "end": 206,
+   "reading": [
+    {
+     "title": "Polymorphism + A Motivating Example",
+     "page": 192,
+     "end": 195,
+     "id": "5.1",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Defining Interfaces",
+     "page": 196,
+     "end": 201,
+     "id": "5.2",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "Updating the Bank Logger",
+     "page": 202,
+     "end": 204,
+     "id": "5.3",
+     "pages": 3,
+     "xp": 14
+    }
+   ],
+   "ex_page": 206,
+   "dir": "ch05_runtime_polymorphism",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "5-1",
+     "kind": "code",
+     "stars": 1,
+     "file": "05-01_bank.cpp",
+     "title": "AccountDatabase interface",
+     "task": "Design an interface to get/set account balances by a long id.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "5-2",
+     "kind": "code",
+     "stars": 2,
+     "file": "05-01_bank.cpp",
+     "title": "InMemoryAccountDatabase",
+     "task": "Implement the interface with in-memory storage.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "5-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "05-01_bank.cpp",
+     "title": "Inject it into Bank",
+     "task": "Give Bank an AccountDatabase& member supplied through its constructor.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "5-4",
+     "kind": "code",
+     "stars": 1,
+     "file": "05-01_bank.cpp",
+     "title": "Prefixed ConsoleLogger",
+     "task": "ConsoleLogger takes a prefix string at construction and prepends it to every line.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 6,
+   "title": "Compile-Time Polymorphism",
+   "start": 207,
+   "part": 1,
+   "end": 238,
+   "reading": [
+    {
+     "title": "Templates + Declaring Templates + Named Conversion Functions",
+     "page": 207,
+     "end": 212,
+     "id": "6.1",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "mean: A Template Function Example",
+     "page": 213,
+     "end": 216,
+     "id": "6.2",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "SimpleUniquePointer: A Template Class Example + Type Checking in Templates",
+     "page": 217,
+     "end": 220,
+     "id": "6.3",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Concepts",
+     "page": 221,
+     "end": 230,
+     "id": "6.4",
+     "pages": 10,
+     "xp": 35
+    },
+    {
+     "title": "static_assert: The Preconcepts Stopgap + Non-Type Template Parameters",
+     "page": 231,
+     "end": 234,
+     "id": "6.5",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Variadic Templates → Polymorphism at Runtime vs. Compile Time",
+     "page": 235,
+     "end": 237,
+     "id": "6.6",
+     "pages": 3,
+     "xp": 14
+    }
+   ],
+   "ex_page": 238,
+   "dir": "ch06_compile_time_polymorphism",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "6-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "06-01_mode.cpp",
+     "title": "mode()",
+     "task": "Return the most frequent value in an int array; return 0 for empty input or ties.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "6-2",
+     "kind": "code",
+     "stars": 2,
+     "file": "06-02_mode_template.cpp",
+     "title": "Template mode()",
+     "task": "Turn mode into a function template.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "6-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "06-02_mode_template.cpp",
+     "title": "Constrain with a concept",
+     "task": "Restrict mode to integer types with a concept; confirm a double array no longer compiles.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "6-4",
+     "kind": "code",
+     "stars": 1,
+     "file": "06-04_mean_array.cpp",
+     "title": "mean() over arrays",
+     "task": "Make mean take an array reference instead of pointer + length (pattern from Listing 6-33).",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "6-5",
+     "kind": "code",
+     "stars": 2,
+     "file": "06-05_bank_template.cpp",
+     "title": "Bank<T>",
+     "task": "Template Chapter 5's Bank on the account type; check Bank<long> still works.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "6-6",
+     "kind": "code",
+     "stars": 2,
+     "file": "06-05_bank_template.cpp",
+     "title": "Account class",
+     "task": "Write an Account that tracks its balance and use Bank<Account>.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "6-7",
+     "kind": "code",
+     "stars": 3,
+     "file": "06-05_bank_template.cpp",
+     "title": "Checking & savings",
+     "task": "Make Account an interface with two implementations and move money between several accounts.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 7,
+   "title": "Expressions",
+   "start": 239,
+   "part": 1,
+   "end": 268,
+   "reading": [
+    {
+     "title": "Operators: Logical Operators → Increment and Decrement Operators",
+     "page": 240,
+     "end": 243,
+     "id": "7.1",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Operators: Comparison Operators → Operator Overloading",
+     "page": 243,
+     "end": 246,
+     "id": "7.2",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Operators: Overloading Operator new",
+     "page": 247,
+     "end": 251,
+     "id": "7.3",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Operators: Operator Precedence and Associativity + Evaluation Order",
+     "page": 252,
+     "end": 254,
+     "id": "7.4",
+     "pages": 3,
+     "xp": 14
+    },
+    {
+     "title": "User-Defined Literals + Type Conversions",
+     "page": 255,
+     "end": 261,
+     "id": "7.5",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Constant Expressions + Volatile Expressions",
+     "page": 262,
+     "end": 266,
+     "id": "7.6",
+     "pages": 5,
+     "xp": 20
+    }
+   ],
+   "ex_page": 267,
+   "dir": "ch07_expressions",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "7-1",
+     "kind": "code",
+     "stars": 3,
+     "file": "07-01_big_integer.cpp",
+     "title": "UnsignedBigInteger",
+     "task": "Arbitrary-size unsigned integer with +, - (bonus: *, /, %), int interop, and overflow / narrowing checks.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "7-2",
+     "kind": "code",
+     "stars": 3,
+     "file": "07-02_large_bucket.cpp",
+     "title": "LargeBucket heap",
+     "task": "Extend the chapter's Heap to serve 1 MB buckets for allocations over 4096 bytes, still throwing bad_alloc when full.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 8,
+   "title": "Statements",
+   "start": 269,
+   "part": 1,
+   "end": 300,
+   "reading": [
+    {
+     "title": "Expression Statements + Compound Statements",
+     "page": 269,
+     "end": 270,
+     "id": "8.1",
+     "pages": 2,
+     "xp": 11
+    },
+    {
+     "title": "Declarations: Functions + Namespaces",
+     "page": 271,
+     "end": 277,
+     "id": "8.2",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Declarations: Type Aliasing → Attributes",
+     "page": 278,
+     "end": 282,
+     "id": "8.3",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Selection Statements",
+     "page": 283,
+     "end": 287,
+     "id": "8.4",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Iteration Statements",
+     "page": 288,
+     "end": 295,
+     "id": "8.5",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Jump Statements",
+     "page": 296,
+     "end": 298,
+     "id": "8.6",
+     "pages": 3,
+     "xp": 14
+    }
+   ],
+   "ex_page": 299,
+   "dir": "ch08_statements",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "8-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "08-01_ranges/",
+     "title": "Split into translation units",
+     "task": "Move Listing 8-27's FibonacciRange/Iterator into a header + .cpp, leaving main in its own file.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "8-2",
+     "kind": "code",
+     "stars": 2,
+     "file": "08-01_ranges/",
+     "title": "PrimeNumberRange",
+     "task": "A range-for-compatible range over primes below N, in its own header/source pair.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "8-3",
+     "kind": "code",
+     "stars": 1,
+     "file": "08-01_ranges/",
+     "title": "Primes below 5,000",
+     "task": "Add a loop in main that prints every prime under 5,000.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 9,
+   "title": "Functions",
+   "start": 301,
+   "part": 1,
+   "end": 336,
+   "reading": [
+    {
+     "title": "Function Declarations + auto Return Types",
+     "page": 302,
+     "end": 305,
+     "id": "9.1",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "auto and Function Templates → Variadic Templates",
+     "page": 306,
+     "end": 311,
+     "id": "9.2",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "Function Pointers + The Function-Call Operator + A Counting Example",
+     "page": 312,
+     "end": 315,
+     "id": "9.3",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Lambdas: Usage → Generic Lambdas",
+     "page": 316,
+     "end": 319,
+     "id": "9.4",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Lambdas: Lambda Return Types → constexpr Lambda Expressions",
+     "page": 320,
+     "end": 326,
+     "id": "9.5",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "std::function + The main Function and the Command Line",
+     "page": 327,
+     "end": 334,
+     "id": "9.6",
+     "pages": 8,
+     "xp": 29
+    }
+   ],
+   "ex_page": 335,
+   "dir": "ch09_functions",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "9-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "09-01_fold.cpp",
+     "title": "fold()",
+     "task": "Generic constexpr fold over an array; use it for sum, max, min and 'count > 200'.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "9-2",
+     "kind": "code",
+     "stars": 2,
+     "file": "09-02_arg_length_histogram.cpp",
+     "title": "Argument-length histogram",
+     "task": "Print a histogram of the lengths of all command-line arguments.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "9-3",
+     "kind": "code",
+     "stars": 1,
+     "file": "09-03_all.cpp",
+     "title": "all()",
+     "task": "Return true only if a predicate holds for every element.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 10,
+   "title": "Testing",
+   "start": 339,
+   "part": 2,
+   "end": 398,
+   "reading": [
+    {
+     "title": "Unit Tests + Taking a Brake: Implementing AutoBrake",
+     "page": 340,
+     "end": 343,
+     "id": "10.1",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Taking a Brake: Test-Driven Development",
+     "page": 344,
+     "end": 354,
+     "id": "10.2",
+     "pages": 11,
+     "xp": 35
+    },
+    {
+     "title": "Taking a Brake: Adding a Service-Bus Interface",
+     "page": 355,
+     "end": 361,
+     "id": "10.3",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Test Frameworks: The Catch Unit-Testing Framework",
+     "page": 362,
+     "end": 367,
+     "id": "10.4",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "Test Frameworks: Google Test",
+     "page": 368,
+     "end": 374,
+     "id": "10.5",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Test Frameworks: Boost Test + Summary: Testing Frameworks",
+     "page": 375,
+     "end": 380,
+     "id": "10.6",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "Mocking: Google Mock",
+     "page": 381,
+     "end": 389,
+     "id": "10.7",
+     "pages": 9,
+     "xp": 32
+    },
+    {
+     "title": "Mocking: HippoMocks + A Note on Other Mocking Options: FakeIt and Trompeloeil",
+     "page": 390,
+     "end": 395,
+     "id": "10.8",
+     "pages": 6,
+     "xp": 23
+    }
+   ],
+   "ex_page": 396,
+   "dir": "ch10_testing",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "10-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "10-01_autobrake.cpp",
+     "title": "Subscribe to speed limits",
+     "task": "Extend the service bus + AutoBrake with a SpeedLimitDetected callback; keep all tests green.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-2",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "Remember the speed limit",
+     "task": "Private field for the last known limit, plus a getter.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-3",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "RED: default limit is 39",
+     "task": "Write a test asserting a fresh AutoBrake's limit is 39 m/s.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-4",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "GREEN",
+     "task": "Make the tests pass.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-5",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "RED: limit follows detections",
+     "task": "Publish three SpeedLimitDetected events and check the stored limit after each.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-6",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "GREEN",
+     "task": "Make the tests pass.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-7",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "RED: under the limit, no brake",
+     "task": "Limit 35, speed 34 → no BrakeCommand.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-8",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "GREEN",
+     "task": "Make the tests pass.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-9",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "RED: speeding brakes",
+     "task": "Limit 35, speed 40 → exactly one BrakeCommand with time_to_collision_s == 0.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-10",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "GREEN",
+     "task": "Make the tests pass.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-11",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "RED: limit drops below speed",
+     "task": "Limit 35, speed 30, then limit 25 → exactly one BrakeCommand, time_to_collision_s == 0.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "10-12",
+     "kind": "code",
+     "stars": 1,
+     "file": "10-01_autobrake.cpp",
+     "title": "GREEN",
+     "task": "Make the tests pass.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 11,
+   "title": "Smart Pointers",
+   "start": 399,
+   "part": 2,
+   "end": 426,
+   "reading": [
+    {
+     "title": "Smart Pointers + Smart Pointer Ownership + Scoped Pointers",
+     "page": 399,
+     "end": 406,
+     "id": "11.1",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Unique Pointers",
+     "page": 407,
+     "end": 412,
+     "id": "11.2",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "Shared Pointers",
+     "page": 413,
+     "end": 417,
+     "id": "11.3",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Weak Pointers + Intrusive Pointers",
+     "page": 418,
+     "end": 421,
+     "id": "11.4",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Summary of Smart Pointer Options + Allocators",
+     "page": 422,
+     "end": 424,
+     "id": "11.5",
+     "pages": 3,
+     "xp": 14
+    }
+   ],
+   "ex_page": 426,
+   "dir": "ch11_smart_pointers",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "11-1",
+     "kind": "code",
+     "stars": 1,
+     "file": "11-01_file_guard.cpp",
+     "title": "shared_ptr file guard",
+     "task": "Redo Listing 11-12 with std::shared_ptr instead of std::unique_ptr.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "11-2",
+     "kind": "code",
+     "stars": 1,
+     "file": "11-01_file_guard.cpp",
+     "title": "Share, don't move",
+     "task": "Drop the std::move and call say_hello twice. Why does that work now?",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "11-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "11-03_hal.cpp",
+     "title": "Hal",
+     "task": "Hal holds a shared_ptr<FILE>, writes a status line on demand and a farewell line in its destructor.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "11-4",
+     "kind": "code",
+     "stars": 1,
+     "file": "11-03_hal.cpp",
+     "title": "Many Hals, one file",
+     "task": "Create several Hals sharing one file and let shared ownership handle cleanup.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 12,
+   "title": "Utilities",
+   "start": 427,
+   "part": 2,
+   "end": 464,
+   "reading": [
+    {
+     "title": "Data Structures: tribool + optional",
+     "page": 428,
+     "end": 431,
+     "id": "12.1",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Data Structures: pair + tuple",
+     "page": 432,
+     "end": 435,
+     "id": "12.2",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Data Structures: any + variant",
+     "page": 436,
+     "end": 439,
+     "id": "12.3",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Date and Time",
+     "page": 440,
+     "end": 449,
+     "id": "12.4",
+     "pages": 10,
+     "xp": 35
+    },
+    {
+     "title": "Numerics: Numeric Functions → Mathematical Constants",
+     "page": 450,
+     "end": 453,
+     "id": "12.5",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Numerics: Random Numbers",
+     "page": 454,
+     "end": 457,
+     "id": "12.6",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Numerics: Numeric Limits → Compile-Time Rational Arithmetic",
+     "page": 458,
+     "end": 462,
+     "id": "12.7",
+     "pages": 5,
+     "xp": 20
+    }
+   ],
+   "ex_page": 463,
+   "dir": "ch12_utilities",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "12-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "12-01_narrow_cast_optional.cpp",
+     "title": "narrow_cast → optional",
+     "task": "Rework Listing 6-6's narrow_cast to return an empty std::optional instead of throwing; add a unit test.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "12-2",
+     "kind": "code",
+     "stars": 2,
+     "file": "12-02_password_generator.cpp",
+     "title": "Password generator",
+     "task": "Print random alphanumeric passwords using std::random_device and a uniform distribution.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 13,
+   "title": "Containers",
+   "start": 465,
+   "part": 2,
+   "end": 520,
+   "reading": [
+    {
+     "title": "Sequence Containers: Arrays",
+     "page": 466,
+     "end": 472,
+     "id": "13.1",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Sequence Containers: Vectors",
+     "page": 473,
+     "end": 480,
+     "id": "13.2",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Sequence Containers: Niche Sequential Containers",
+     "page": 481,
+     "end": 491,
+     "id": "13.3",
+     "pages": 11,
+     "xp": 35
+    },
+    {
+     "title": "Associative Containers: Sets",
+     "page": 492,
+     "end": 499,
+     "id": "13.4",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Associative Containers: Unordered Sets",
+     "page": 500,
+     "end": 503,
+     "id": "13.5",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Associative Containers: Maps + Niche Associative Containers",
+     "page": 504,
+     "end": 511,
+     "id": "13.6",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Graphs and Property Trees → Initializer Lists",
+     "page": 512,
+     "end": 516,
+     "id": "13.7",
+     "pages": 5,
+     "xp": 20
+    }
+   ],
+   "ex_page": 517,
+   "dir": "ch13_containers",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "13-1",
+     "kind": "code",
+     "stars": 1,
+     "file": "13-01_fib_vector.cpp",
+     "title": "Vector capacity vs Fibonacci",
+     "task": "Reserve 10, push 20 Fibonacci numbers, print capacity before/after, explain the difference.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "13-2",
+     "kind": "code",
+     "stars": 1,
+     "file": "13-02_std_array.cpp",
+     "title": "std::array rewrite",
+     "task": "Redo Listings 2-9, 2-10 and 2-11 with std::array.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "13-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "13-03_sorted_args.cpp",
+     "title": "Sorted arguments",
+     "task": "Store argv in std::set<const char*> with a custom C-string comparator; print in order.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "13-4",
+     "kind": "code",
+     "stars": 1,
+     "file": "13-04_fib_vector_redux.cpp",
+     "title": "13-1 again, from memory",
+     "task": "The book prints 13-1 twice. Treat the repeat as a closed-book redo.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "13-5",
+     "kind": "code",
+     "stars": 2,
+     "file": "13-05_fib_cache.cpp",
+     "title": "Benchmark baseline",
+     "task": "Type in the chapter's fib_sum benchmark, implement fib_sum, and record a baseline time.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "13-6",
+     "kind": "code",
+     "stars": 2,
+     "file": "13-05_fib_cache.cpp",
+     "title": "Cache it",
+     "task": "Implement cached_fib_sum with std::map, then unordered_map, then maybe a vector. How fast can you go?",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "13-7",
+     "kind": "code",
+     "stars": 3,
+     "file": "13-07_matrix.cpp",
+     "title": "Matrix (rows ≠ cols)",
+     "task": "A Matrix like Listing 13-38's SquareMatrix but with independent row/column counts.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 14,
+   "title": "Iterators",
+   "start": 521,
+   "part": 2,
+   "end": 538,
+   "reading": [
+    {
+     "title": "Iterator Categories",
+     "page": 522,
+     "end": 529,
+     "id": "14.1",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Auxiliary Iterator Functions",
+     "page": 530,
+     "end": 533,
+     "id": "14.2",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Additional Iterator Adapters",
+     "page": 534,
+     "end": 536,
+     "id": "14.3",
+     "pages": 3,
+     "xp": 14
+    }
+   ],
+   "ex_page": 537,
+   "dir": "ch14_iterators",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "14-1",
+     "kind": "code",
+     "stars": 1,
+     "file": "14-01_prev.cpp",
+     "title": "std::prev twin",
+     "task": "Write Listing 14-8's counterpart using std::prev.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "14-2",
+     "kind": "code",
+     "stars": 1,
+     "file": "14-02_sum_range.cpp",
+     "title": "sum(first, last)",
+     "task": "Function template that sums a half-open range of ints.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "14-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "14-03_advance_benchmark.cpp",
+     "title": "std::advance race",
+     "task": "Time std::advance on a huge forward_list vs a huge vector. How does it scale?",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 15,
+   "title": "Strings",
+   "start": 539,
+   "part": 2,
+   "end": 580,
+   "reading": [
+    {
+     "title": "std::string: Constructing + String Storage and Small String Optimizations",
+     "page": 540,
+     "end": 543,
+     "id": "15.1",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "std::string: Element and Iterator Access → Manipulating Elements",
+     "page": 544,
+     "end": 551,
+     "id": "15.2",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "std::string: Search + Numeric Conversions",
+     "page": 552,
+     "end": 557,
+     "id": "15.3",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "String View + Regular Expressions",
+     "page": 558,
+     "end": 567,
+     "id": "15.4",
+     "pages": 10,
+     "xp": 35
+    },
+    {
+     "title": "Boost String Algorithms",
+     "page": 568,
+     "end": 577,
+     "id": "15.5",
+     "pages": 10,
+     "xp": 35
+    },
+    {
+     "title": "Boost Tokenizer + Localizations",
+     "page": 578,
+     "end": 579,
+     "id": "15.6",
+     "pages": 2,
+     "xp": 11
+    }
+   ],
+   "ex_page": 580,
+   "dir": "ch15_strings",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "15-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "15-01_histogram.cpp",
+     "title": "AlphaHistogram, string edition",
+     "task": "Refactor Listings 9-30/9-31 to use std::string / string_view and an associative container.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "15-2",
+     "kind": "code",
+     "stars": 1,
+     "file": "15-02_palindrome.cpp",
+     "title": "Palindrome checker",
+     "task": "Tell whether the user's input is a palindrome.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "15-3",
+     "kind": "code",
+     "stars": 1,
+     "file": "15-03_vowel_count.cpp",
+     "title": "Vowel counter",
+     "task": "Count the vowels in the user's input.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "15-4",
+     "kind": "code",
+     "stars": 2,
+     "file": "15-04_calculator.cpp",
+     "title": "String calculator",
+     "task": "Parse and evaluate 'a op b' for + - * / using find and numeric conversions.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "15-5",
+     "kind": "code",
+     "stars": 3,
+     "file": "15-04_calculator.cpp",
+     "title": "Calculator++",
+     "task": "Add some of: chained operations, %, floating point, parentheses.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "15-6",
+     "kind": "read",
+     "stars": 1,
+     "file": null,
+     "title": "Locales",
+     "task": "Skim [localization] in the standard draft.",
+     "optional": true,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 16,
+   "title": "Streams",
+   "start": 581,
+   "part": 2,
+   "end": 608,
+   "reading": [
+    {
+     "title": "Streams: Stream Classes",
+     "page": 581,
+     "end": 587,
+     "id": "16.1",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Streams: Stream State → Manipulators",
+     "page": 588,
+     "end": 592,
+     "id": "16.2",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Streams: User-Defined Types + String Streams",
+     "page": 593,
+     "end": 598,
+     "id": "16.3",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "Streams: File Streams",
+     "page": 599,
+     "end": 603,
+     "id": "16.4",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Streams: Stream Buffers + Random Access",
+     "page": 604,
+     "end": 606,
+     "id": "16.5",
+     "pages": 3,
+     "xp": 14
+    }
+   ],
+   "ex_page": 608,
+   "dir": "ch16_streams",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "16-1",
+     "kind": "code",
+     "stars": 1,
+     "file": "16-01_autobrake_ostream.cpp",
+     "title": "operator<< for AutoBrake",
+     "task": "Stream out AutoBrake's collision threshold and speed.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "16-2",
+     "kind": "code",
+     "stars": 1,
+     "file": "16-02_uppercase_filter.cpp",
+     "title": "Uppercase filter",
+     "task": "Read stdin, write it upper-cased to stdout.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "16-3",
+     "kind": "read",
+     "stars": 1,
+     "file": null,
+     "title": "Boost IOStreams",
+     "task": "Read Boost IOStreams' introductory docs.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "16-4",
+     "kind": "code",
+     "stars": 2,
+     "file": "16-04_file_stats.cpp",
+     "title": "File stats",
+     "task": "Given a path: word count, average word length and a character histogram.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 17,
+   "title": "Filesystems",
+   "start": 609,
+   "part": 2,
+   "end": 630,
+   "reading": [
+    {
+     "title": "Filesystem Concepts + std::filesystem::path",
+     "page": 610,
+     "end": 614,
+     "id": "17.1",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Files and Directories",
+     "page": 615,
+     "end": 621,
+     "id": "17.2",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Directory Iterators + fstream Interoperation",
+     "page": 622,
+     "end": 627,
+     "id": "17.3",
+     "pages": 6,
+     "xp": 23
+    }
+   ],
+   "ex_page": 629,
+   "dir": "ch17_filesystems",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "17-1",
+     "kind": "code",
+     "stars": 1,
+     "file": "17-01_find_by_extension.cpp",
+     "title": "Find by extension",
+     "task": "Recursively list files under a path that have a given extension.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "17-2",
+     "kind": "code",
+     "stars": 2,
+     "file": "17-02_my_ls.cpp",
+     "title": "Option flags",
+     "task": "Upgrade Listing 17-8 to parse '-R' style flags; recurse only when R is given.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "17-3",
+     "kind": "code",
+     "stars": 3,
+     "file": "17-02_my_ls.cpp",
+     "title": "Your own ls",
+     "task": "Implement as many ls options as you can.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 18,
+   "title": "Algorithms",
+   "start": 631,
+   "part": 2,
+   "end": 696,
+   "reading": [
+    {
+     "title": "Algorithmic Complexity + Execution Policies",
+     "page": 632,
+     "end": 633,
+     "id": "18.1",
+     "pages": 2,
+     "xp": 11
+    },
+    {
+     "title": "Non-Modifying Ops: all_of → for_each",
+     "page": 634,
+     "end": 637,
+     "id": "18.2",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Non-Modifying Ops: for_each_n → find_end",
+     "page": 638,
+     "end": 641,
+     "id": "18.3",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Non-Modifying Ops: find_first → mismatch",
+     "page": 642,
+     "end": 645,
+     "id": "18.4",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Non-Modifying Ops: equal → search_n",
+     "page": 646,
+     "end": 649,
+     "id": "18.5",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Mutating Ops: copy → move",
+     "page": 650,
+     "end": 653,
+     "id": "18.6",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Mutating Ops: move_backward → transform",
+     "page": 654,
+     "end": 657,
+     "id": "18.7",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Mutating Ops: replace → remove",
+     "page": 658,
+     "end": 662,
+     "id": "18.8",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Mutating Ops: unique → shuffle",
+     "page": 663,
+     "end": 668,
+     "id": "18.9",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "Sorting and Related Operations",
+     "page": 669,
+     "end": 674,
+     "id": "18.10",
+     "pages": 6,
+     "xp": 23
+    },
+    {
+     "title": "Binary Search + Partitioning Algorithms",
+     "page": 675,
+     "end": 682,
+     "id": "18.11",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Merging Algorithms + Extreme-Value Algorithms",
+     "page": 683,
+     "end": 686,
+     "id": "18.12",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Numeric Operations + Boost Algorithm",
+     "page": 687,
+     "end": 696,
+     "id": "18.13",
+     "pages": 10,
+     "xp": 35
+    }
+   ],
+   "ex_page": null,
+   "dir": "ch18_algorithms",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "18-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "18-01_algorithm_makeover.cpp",
+     "title": "Algorithm makeover",
+     "task": "Rewrite your mode (6-1), fold uses (9-1) and all (9-3) using <algorithm>/<numeric> one-liners.",
+     "optional": false,
+     "boost": false,
+     "bonus": true
+    },
+    {
+     "id": "18-2",
+     "kind": "code",
+     "stars": 2,
+     "file": "18-02_roll_your_own.cpp",
+     "title": "Roll your own",
+     "task": "Implement my_find_if, my_transform and my_partition as templates; verify against the std versions on random data.",
+     "optional": false,
+     "boost": false,
+     "bonus": true
+    },
+    {
+     "id": "18-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "18-03_sort_showdown.cpp",
+     "title": "Sort showdown",
+     "task": "Time sort, stable_sort, partial_sort (top 100) and nth_element on 1M ints.",
+     "optional": false,
+     "boost": false,
+     "bonus": true
+    }
+   ]
+  },
+  {
+   "num": 19,
+   "title": "Concurrency and Parallelism",
+   "start": 697,
+   "part": 2,
+   "end": 720,
+   "reading": [
+    {
+     "title": "Concurrency: Asynchronous Tasks",
+     "page": 698,
+     "end": 704,
+     "id": "19.1",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Concurrency: Sharing and Coordinating",
+     "page": 705,
+     "end": 715,
+     "id": "19.2",
+     "pages": 11,
+     "xp": 35
+    },
+    {
+     "title": "Concurrency: Low-Level Facilities + Parallel Algorithms",
+     "page": 716,
+     "end": 718,
+     "id": "19.3",
+     "pages": 3,
+     "xp": 14
+    }
+   ],
+   "ex_page": 719,
+   "dir": "ch19_concurrency_and_parallelism",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "19-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "19-01_spinlock.cpp",
+     "title": "SpinLock",
+     "task": "Non-copyable SpinLock with lock / try_lock / unlock that works with std::lock_guard.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "19-2",
+     "kind": "read",
+     "stars": 1,
+     "file": null,
+     "title": "Why DCLP is broken",
+     "task": "Read Meyers & Alexandrescu on double-checked locking, then std::call_once in [thread.once.callonce].",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "19-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "19-03_threadsafe_queue.cpp",
+     "title": "Thread-safe queue",
+     "task": "A std::queue-like class guarded by a std::mutex.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "19-4",
+     "kind": "code",
+     "stars": 2,
+     "file": "19-03_threadsafe_queue.cpp",
+     "title": "wait_and_pop",
+     "task": "Block on a condition_variable until an element is available, then pop it.",
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "19-5",
+     "kind": "read",
+     "stars": 1,
+     "file": null,
+     "title": "Boost.Coroutine2",
+     "task": "Read the Overview / Introduction / Motivation pages.",
+     "optional": true,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 20,
+   "title": "Network Programming with Boost Asio",
+   "start": 721,
+   "part": 2,
+   "end": 748,
+   "reading": [
+    {
+     "title": "The Boost Asio Programming Model",
+     "page": 722,
+     "end": 723,
+     "id": "20.1",
+     "pages": 2,
+     "xp": 11
+    },
+    {
+     "title": "Asio Networking: The Internet Protocol Suite → Connecting",
+     "page": 724,
+     "end": 728,
+     "id": "20.2",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Asio Networking: Buffers + Reading and Writing Data with Buffers",
+     "page": 729,
+     "end": 733,
+     "id": "20.3",
+     "pages": 5,
+     "xp": 20
+    },
+    {
+     "title": "Asio Networking: The Hypertext Transfer Protocol (HTTP) → Asynchronous Reading and Writing",
+     "page": 734,
+     "end": 740,
+     "id": "20.4",
+     "pages": 7,
+     "xp": 26
+    },
+    {
+     "title": "Asio Networking: Serving",
+     "page": 741,
+     "end": 744,
+     "id": "20.5",
+     "pages": 4,
+     "xp": 17
+    },
+    {
+     "title": "Multithreading Boost Asio",
+     "page": 745,
+     "end": 746,
+     "id": "20.6",
+     "pages": 2,
+     "xp": 11
+    }
+   ],
+   "ex_page": 747,
+   "dir": "ch20_networking_with_boost_asio",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "20-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "20-01_udp_echo.cpp",
+     "title": "UDP echo server",
+     "task": "Port Listing 20-14's uppercasing echo server to UDP.",
+     "optional": false,
+     "boost": true,
+     "bonus": false
+    },
+    {
+     "id": "20-2",
+     "kind": "code",
+     "stars": 3,
+     "file": "20-02_subnet_pinger.cpp",
+     "title": "Subnet pinger",
+     "task": "Ping every host on a subnet with Asio's ICMP classes (needs sudo). Peek at how Nmap does it.",
+     "optional": true,
+     "boost": true,
+     "bonus": false
+    },
+    {
+     "id": "20-3",
+     "kind": "code",
+     "stars": 2,
+     "file": "20-03_beast_client.cpp",
+     "title": "Beast HTTP client",
+     "task": "Rewrite Listings 20-10/20-11 with Boost.Beast.",
+     "optional": false,
+     "boost": true,
+     "bonus": false
+    },
+    {
+     "id": "20-4",
+     "kind": "code",
+     "stars": 3,
+     "file": "20-04_beast_file_server.cpp",
+     "title": "Beast file server",
+     "task": "HTTP server that serves files from a directory.",
+     "optional": false,
+     "boost": true,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "num": 21,
+   "title": "Writing Applications",
+   "start": 749,
+   "part": 2,
+   "end": 772,
+   "reading": [
+    {
+     "title": "Program Support",
+     "page": 750,
+     "end": 757,
+     "id": "21.1",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Boost ProgramOptions",
+     "page": 758,
+     "end": 765,
+     "id": "21.2",
+     "pages": 8,
+     "xp": 29
+    },
+    {
+     "title": "Special Topics in Compilation",
+     "page": 766,
+     "end": 769,
+     "id": "21.3",
+     "pages": 4,
+     "xp": 17
+    }
+   ],
+   "ex_page": 771,
+   "dir": "ch21_writing_applications",
+   "optional": false,
+   "exercises": [
+    {
+     "id": "21-1",
+     "kind": "code",
+     "stars": 2,
+     "file": "21-01_echo_server_sigint.cpp",
+     "title": "Graceful Ctrl-C",
+     "task": "Add keyboard-interrupt handling and a static kill switch to Listing 20-12's async echo server.",
+     "optional": false,
+     "boost": true,
+     "bonus": false
+    },
+    {
+     "id": "21-2",
+     "kind": "code",
+     "stars": 2,
+     "file": "21-02_http_client_options.cpp",
+     "title": "HTTP client options",
+     "task": "Add host + resource program options to Listing 20-10; one request per resource.",
+     "optional": false,
+     "boost": true,
+     "bonus": false
+    },
+    {
+     "id": "21-3",
+     "kind": "code",
+     "stars": 1,
+     "file": "21-02_http_client_options.cpp",
+     "title": "Save responses",
+     "task": "Add an output-directory option; write each response to a derived filename.",
+     "optional": false,
+     "boost": true,
+     "bonus": false
+    },
+    {
+     "id": "21-4",
+     "kind": "code",
+     "stars": 3,
+     "file": "21-04_mgrep/",
+     "title": "mgrep",
+     "task": "Multi-threaded grep: Boyer-Moore from Boost Algorithm + std::async workers.",
+     "optional": false,
+     "boost": true,
+     "bonus": false
+    }
+   ]
+  }
+ ],
+ "bosses": [
+  {
+   "n": 1,
+   "name": "The Lifetime Lich",
+   "dir": "boss1_lifetime_lich",
+   "unlock": [
+    2,
+    3,
+    4
+   ],
+   "xp": 300,
+   "build": "sanitize",
+   "args": [],
+   "pitch": "Build `DynArray`, a growable array of ints, without any standard containers. The Lich feeds on leaked memory and dangling pointers.",
+   "goals": [
+    "All heap memory is owned by the class (RAII): `new[]`/`delete[]` appear only inside DynArray",
+    "`push_back` grows capacity geometrically; `size()` and `capacity()` report correctly",
+    "`at(i)` throws `std::out_of_range` on a bad index; `operator[]` is unchecked",
+    "Copy constructor + copy assignment do a deep copy and survive self-assignment",
+    "Move constructor + move assignment are `noexcept` and leave the source empty but valid",
+    "A tracing switch prints every construct / copy / move / destroy (like Chapter 4's Tracer)",
+    "`main()` is a self-test: it checks every feature and returns 0 only if all checks pass",
+    "Runs clean under AddressSanitizer + UBSan (the tool builds it that way automatically)"
+   ]
+  },
+  {
+   "n": 2,
+   "name": "The Operator Overlord",
+   "dir": "boss2_operator_overlord",
+   "unlock": [
+    5,
+    6,
+    7
+   ],
+   "xp": 300,
+   "build": "sanitize",
+   "args": [],
+   "pitch": "Forge `Rational<T>`, an exact fraction type that behaves like a built-in number, plus a pluggable report printer.",
+   "goals": [
+    "`template <std::integral T> class Rational` — constrained with a concept",
+    "Always normalised (gcd, sign lives in the numerator); a zero denominator throws",
+    "`+ - * /`, their compound forms, unary `-`, `==` and ordering (`<=>` or `<`)",
+    "Explicit conversion to `double`; arithmetic is `constexpr` and proven with a few `static_assert`s",
+    "A user-defined literal: `3_r` gives `Rational<long long>{3, 1}`",
+    "A `ReportPrinter` interface with two implementations (aligned console table, CSV) selected at runtime",
+    "`main()` is a self-test that returns 0 only if every check passes"
+   ]
+  },
+  {
+   "n": 3,
+   "name": "The Core Colossus",
+   "dir": "boss3_core_colossus",
+   "unlock": [
+    8,
+    9
+   ],
+   "xp": 400,
+   "build": "sanitize",
+   "args": [
+    "--test"
+   ],
+   "pitch": "Part I finale. Build `rpn`, a reverse-Polish calculator: `./rpn 3 4 + 2 '*'` prints `14`.",
+   "goals": [
+    "Tokens come from the command line (`argc`/`argv`)",
+    "A fixed-capacity `Stack<T, N>` template; overflow/underflow throw your own exception types",
+    "Operators are dispatched through a table of lambdas or function pointers, not a giant if-chain",
+    "Supports `+ - * / % ^` plus `dup`, `swap`, `drop`",
+    "Split across translation units: stack header, evaluator header/source, `main.cpp`",
+    "Clear error messages and a non-zero exit code on bad input",
+    "`./rpn --test` runs at least 10 built-in cases and returns 0 when all pass"
+   ]
+  },
+  {
+   "n": 4,
+   "name": "The Test Golem",
+   "dir": "boss4_test_golem",
+   "unlock": [
+    10,
+    11,
+    12
+   ],
+   "xp": 400,
+   "build": "sanitize",
+   "args": [],
+   "pitch": "A bank ledger, test-driven from the first line. The Golem only falls to a green test suite.",
+   "goals": [
+    "Your own micro test framework: a `TEST(\"name\") { ... }` registration macro, `REQUIRE(expr)` reporting file:line, and a 'N passed / M failed' summary",
+    "The ledger owns accounts through `std::unique_ptr`; loggers are shared through `std::shared_ptr`",
+    "Transactions are a `std::variant<Deposit, Withdrawal, Transfer>` applied with `std::visit`",
+    "Account lookup returns `std::optional` (or a nullable pointer) and never throws",
+    "Every transaction is timestamped with `std::chrono`",
+    "Storage sits behind an interface, and the tests use a hand-written fake/mock of it",
+    "At least 12 tests, all green; `main()` returns non-zero if any test fails"
+   ]
+  },
+  {
+   "n": 5,
+   "name": "The Container Kraken",
+   "dir": "boss5_container_kraken",
+   "unlock": [
+    13,
+    14,
+    15
+   ],
+   "xp": 400,
+   "build": "sanitize",
+   "args": [],
+   "pitch": "Build `kvdb`, an in-memory key-value store with a command prompt. Commands arrive on stdin, one per line.",
+   "goals": [
+    "Commands: `SET k v`, `GET k`, `DEL k`, `INCR k`, `COUNT`, `KEYS <regex>`, `HISTORY n`, `QUIT`",
+    "Storage is a `std::unordered_map`; `KEYS` output is sorted",
+    "Parsing uses `std::string_view` (no copies until a value is stored)",
+    "`KEYS` matches with `std::regex`",
+    "`HISTORY n` shows the last n commands from a bounded `std::deque`",
+    "Works in script mode: `kvdb < script.txt`",
+    "At least 3 test pairs in `tests/` (`name.in` → expected `name.out`) — the tool pipes and diffs them"
+   ],
+   "tests": true,
+   "min_tests": 3,
+   "files": {
+    "tests/basics.in": "SET lang cpp\nGET lang\nGET missing\nINCR hits\nINCR hits\nCOUNT\nDEL lang\nDEL lang\nCOUNT\nQUIT\n",
+    "tests/basics.out": "OK\ncpp\n(nil)\n1\n2\n2\n1\n0\n1\n"
+   },
+   "readme_extra": [
+    "## Protocol (what the tests expect)",
+    "| Command | Output |",
+    "|---|---|",
+    "| `SET k v` | `OK` |",
+    "| `GET k` | the value, or `(nil)` |",
+    "| `DEL k` | `1` if removed, else `0` |",
+    "| `INCR k` | the new integer value (missing keys start at 0) |",
+    "| `COUNT` | number of keys |",
+    "| `KEYS <regex>` | matching keys, sorted, one per line |",
+    "| `HISTORY n` | last n commands, oldest first |",
+    "| `QUIT` | exits (no output) |",
+    "",
+    "Unknown commands print `ERR unknown command`.",
+    ""
+   ]
+  },
+  {
+   "n": 6,
+   "name": "The Filesystem Phantom",
+   "dir": "boss6_filesystem_phantom",
+   "unlock": [
+    16,
+    17
+   ],
+   "xp": 400,
+   "build": "plain",
+   "args": [],
+   "pitch": "Build `dupes`, a duplicate-file finder. The Phantom hides copies of itself all over your disk.",
+   "goals": [
+    "`dupes <dir> [--min-size N] [--ext .jpg] [--out report.txt]`",
+    "Walks recursively with `recursive_directory_iterator`, skipping symlinks and permission errors gracefully",
+    "Groups by file size first, then by a content hash (read in chunks with `ifstream`; implement FNV-1a yourself)",
+    "Report groups sorted by wasted bytes, with human-readable sizes formatted using `<iomanip>`",
+    "`--out` writes the report to a file instead of stdout",
+    "Handles a directory with 10,000+ files in a few seconds (try it on ~/Downloads)"
+   ]
+  },
+  {
+   "n": 7,
+   "name": "The Parallel Wraith",
+   "dir": "boss7_parallel_wraith",
+   "unlock": [
+    18,
+    19
+   ],
+   "xp": 400,
+   "build": "tsan",
+   "args": [],
+   "pitch": "Build `wordstorm`, a parallel word-frequency counter for a whole directory of text.",
+   "goals": [
+    "A fixed-size thread pool built on your thread-safe queue from 19-3/19-4",
+    "Workers count words into per-thread maps that are merged at the end (no global lock in the hot loop)",
+    "Top-K words via `std::partial_sort`",
+    "Prints the timing for 1 thread vs N threads and the speedup",
+    "Clean shutdown; no data races under ThreadSanitizer (the tool builds it with -fsanitize=thread)",
+    "Uses at least 5 different `<algorithm>`/`<numeric>` functions in meaningful places"
+   ],
+   "selftest": false
+  },
+  {
+   "n": 8,
+   "name": "The Network Dragon",
+   "dir": "boss8_network_dragon",
+   "unlock": [
+    20,
+    21
+   ],
+   "xp": 750,
+   "build": "boost",
+   "args": [],
+   "pitch": "Final boss. A multi-client TCP chat server with Boost.Asio that you can connect to with `nc localhost 7777`.",
+   "goals": [
+    "Async accept / read / write; any number of clients; messages broadcast to everyone else",
+    "`/nick <name>`, `/list` and `/quit` commands",
+    "Program options: `--port`, `--max-clients`, `--log-file` (Boost.ProgramOptions)",
+    "Graceful shutdown on Ctrl-C via `asio::signal_set`; all sessions are closed cleanly",
+    "`io_context` runs on a pool of worker threads, with strands where needed",
+    "Timestamped logging to a file",
+    "Demo it with three `nc` clients in three terminals"
+   ]
+  }
+ ],
+ "side": [
+  {
+   "key": "dbg",
+   "short": "Art of Debugging",
+   "title": "The Art of Debugging with GDB, DDD, and Eclipse",
+   "author": "Norman Matloff & Peter Jay Salzman (2008)",
+   "pdf_match": "art.of.debugging",
+   "dir": "side_quests/art_of_debugging",
+   "xp": 300,
+   "pairs": [
+    1,
+    4,
+    19
+   ],
+   "pairs_text": "Chapter 1 (Debugging), then any time an exercise crashes. Chapter 5 of this book pairs with Crash Course chapter 19 (threads)",
+   "note": "The book uses GDB. GDB doesn't run natively on Apple-silicon Macs, but it works in this folder's Linux container (see README: 🐧 Linux toolbox), which also has Valgrind and strace for chapter 7. On the Mac itself, use LLDB (`lldb .build/<name>`) with the GDB→LLDB command map: https://lldb.llvm.org/use/map.html . DDD and Eclipse are optional; skim those parts. Chapter 8 (other languages) is optional.",
+   "chapters": [
+    {
+     "num": 1,
+     "title": "Some Preliminaries for Beginners and Pros",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Debugging Tools Used in This Book → The Principles of Debugging",
+       "pdf": 14,
+       "end": 17,
+       "id": "dbg.1.1",
+       "pages": 4,
+       "xp": 17,
+       "page": "14",
+       "page_end": "17",
+       "optional": false
+      },
+      {
+       "title": "Text-Based vs. GUI-Based Debugging Tools",
+       "pdf": 18,
+       "end": 26,
+       "id": "dbg.1.2",
+       "pages": 9,
+       "xp": 32,
+       "page": "18",
+       "page_end": "26",
+       "optional": false
+      },
+      {
+       "title": "Main Debugger Operations + Online Help",
+       "pdf": 27,
+       "end": 32,
+       "id": "dbg.1.3",
+       "pages": 6,
+       "xp": 23,
+       "page": "27",
+       "page_end": "32",
+       "optional": false
+      },
+      {
+       "title": "Introductory Debugging Session (part 1/3)",
+       "pdf": 32,
+       "end": 39,
+       "id": "dbg.1.4",
+       "pages": 8,
+       "xp": 29,
+       "page": "32",
+       "page_end": "39",
+       "optional": false
+      },
+      {
+       "title": "Introductory Debugging Session (part 2/3)",
+       "pdf": 40,
+       "end": 47,
+       "id": "dbg.1.5",
+       "pages": 8,
+       "xp": 29,
+       "page": "40",
+       "page_end": "47",
+       "optional": false
+      },
+      {
+       "title": "Introductory Debugging Session (part 3/3)",
+       "pdf": 48,
+       "end": 55,
+       "id": "dbg.1.6",
+       "pages": 8,
+       "xp": 29,
+       "page": "48",
+       "page_end": "55",
+       "optional": false
+      },
+      {
+       "title": "Use of Startup Files",
+       "pdf": 56,
+       "end": 59,
+       "id": "dbg.1.7",
+       "pages": 4,
+       "xp": 17,
+       "page": "56",
+       "page_end": "59",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 2,
+     "title": "Stopping to Take a Look Around",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Mechanisms for Pause → Keeping Track of Breakpoints",
+       "pdf": 60,
+       "end": 63,
+       "id": "dbg.2.1",
+       "pages": 4,
+       "xp": 17,
+       "page": "60",
+       "page_end": "63",
+       "optional": false
+      },
+      {
+       "title": "Setting Breakpoints",
+       "pdf": 64,
+       "end": 68,
+       "id": "dbg.2.2",
+       "pages": 5,
+       "xp": 20,
+       "page": "64",
+       "page_end": "68",
+       "optional": false
+      },
+      {
+       "title": "Extended GDB Example + Persistence of Breakpoints",
+       "pdf": 69,
+       "end": 72,
+       "id": "dbg.2.3",
+       "pages": 4,
+       "xp": 17,
+       "page": "69",
+       "page_end": "72",
+       "optional": false
+      },
+      {
+       "title": "Deleting and Disabling Breakpoints + More on Viewing Breakpoint Attributes",
+       "pdf": 73,
+       "end": 81,
+       "id": "dbg.2.4",
+       "pages": 9,
+       "xp": 32,
+       "page": "73",
+       "page_end": "81",
+       "optional": false
+      },
+      {
+       "title": "Resuming Execution",
+       "pdf": 82,
+       "end": 91,
+       "id": "dbg.2.5",
+       "pages": 10,
+       "xp": 35,
+       "page": "82",
+       "page_end": "91",
+       "optional": false
+      },
+      {
+       "title": "Conditional Breakpoints",
+       "pdf": 92,
+       "end": 97,
+       "id": "dbg.2.6",
+       "pages": 6,
+       "xp": 23,
+       "page": "92",
+       "page_end": "97",
+       "optional": false
+      },
+      {
+       "title": "Breakpoint Command Lists",
+       "pdf": 98,
+       "end": 101,
+       "id": "dbg.2.7",
+       "pages": 4,
+       "xp": 17,
+       "page": "98",
+       "page_end": "101",
+       "optional": false
+      },
+      {
+       "title": "Watchpoints",
+       "pdf": 102,
+       "end": 107,
+       "id": "dbg.2.8",
+       "pages": 6,
+       "xp": 23,
+       "page": "102",
+       "page_end": "107",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 3,
+     "title": "Inspecting and Setting Variables",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Our Main Example Code",
+       "pdf": 108,
+       "end": 110,
+       "id": "dbg.3.1",
+       "pages": 3,
+       "xp": 14,
+       "page": "108",
+       "page_end": "110",
+       "optional": false
+      },
+      {
+       "title": "Advanced Inspection and Setting of Variables (part 1/2)",
+       "pdf": 111,
+       "end": 118,
+       "id": "dbg.3.2",
+       "pages": 8,
+       "xp": 29,
+       "page": "111",
+       "page_end": "118",
+       "optional": false
+      },
+      {
+       "title": "Advanced Inspection and Setting of Variables (part 2/2)",
+       "pdf": 119,
+       "end": 125,
+       "id": "dbg.3.3",
+       "pages": 7,
+       "xp": 26,
+       "page": "119",
+       "page_end": "125",
+       "optional": false
+      },
+      {
+       "title": "Setting Variables from Within GDB/DDD/Eclipse + GDB’s Own Variables",
+       "pdf": 126,
+       "end": 129,
+       "id": "dbg.3.4",
+       "pages": 4,
+       "xp": 17,
+       "page": "126",
+       "page_end": "129",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 4,
+     "title": "When a Program Crashes",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Background Material: Memory Management",
+       "pdf": 130,
+       "end": 141,
+       "id": "dbg.4.1",
+       "pages": 12,
+       "xp": 35,
+       "page": "130",
+       "page_end": "141",
+       "optional": false
+      },
+      {
+       "title": "Core Files",
+       "pdf": 142,
+       "end": 143,
+       "id": "dbg.4.2",
+       "pages": 2,
+       "xp": 11,
+       "page": "142",
+       "page_end": "143",
+       "optional": false
+      },
+      {
+       "title": "Extended Example (part 1/2)",
+       "pdf": 144,
+       "end": 150,
+       "id": "dbg.4.3",
+       "pages": 7,
+       "xp": 26,
+       "page": "144",
+       "page_end": "150",
+       "optional": false
+      },
+      {
+       "title": "Extended Example (part 2/2)",
+       "pdf": 151,
+       "end": 157,
+       "id": "dbg.4.4",
+       "pages": 7,
+       "xp": 26,
+       "page": "151",
+       "page_end": "157",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 5,
+     "title": "Debugging in a Multiple-Activities Context",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Debugging Client/Server Network Programs",
+       "pdf": 158,
+       "end": 163,
+       "id": "dbg.5.1",
+       "pages": 6,
+       "xp": 23,
+       "page": "158",
+       "page_end": "163",
+       "optional": false
+      },
+      {
+       "title": "Debugging Threaded Code",
+       "pdf": 164,
+       "end": 175,
+       "id": "dbg.5.2",
+       "pages": 12,
+       "xp": 35,
+       "page": "164",
+       "page_end": "175",
+       "optional": false
+      },
+      {
+       "title": "Debugging Parallel Applications",
+       "pdf": 176,
+       "end": 183,
+       "id": "dbg.5.3",
+       "pages": 8,
+       "xp": 29,
+       "page": "176",
+       "page_end": "183",
+       "optional": false
+      },
+      {
+       "title": "Extended Example (part 1/2)",
+       "pdf": 184,
+       "end": 190,
+       "id": "dbg.5.4",
+       "pages": 7,
+       "xp": 26,
+       "page": "184",
+       "page_end": "190",
+       "optional": false
+      },
+      {
+       "title": "Extended Example (part 2/2)",
+       "pdf": 191,
+       "end": 197,
+       "id": "dbg.5.5",
+       "pages": 7,
+       "xp": 26,
+       "page": "191",
+       "page_end": "197",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 6,
+     "title": "Special Topics",
+     "optional": false,
+     "reading": [
+      {
+       "title": "What If It Doesn’t Even Compile or Load?",
+       "pdf": 198,
+       "end": 206,
+       "id": "dbg.6.1",
+       "pages": 9,
+       "xp": 32,
+       "page": "198",
+       "page_end": "206",
+       "optional": false
+      },
+      {
+       "title": "Debugging GUI Programs",
+       "pdf": 207,
+       "end": 217,
+       "id": "dbg.6.2",
+       "pages": 11,
+       "xp": 35,
+       "page": "207",
+       "page_end": "217",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 7,
+     "title": "Other Tools",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Making Good Use of a Text Editor",
+       "pdf": 218,
+       "end": 224,
+       "id": "dbg.7.1",
+       "pages": 7,
+       "xp": 26,
+       "page": "218",
+       "page_end": "224",
+       "optional": false
+      },
+      {
+       "title": "Making Good Use of the Compiler + Error Reporting in C",
+       "pdf": 225,
+       "end": 229,
+       "id": "dbg.7.2",
+       "pages": 5,
+       "xp": 20,
+       "page": "225",
+       "page_end": "229",
+       "optional": false
+      },
+      {
+       "title": "Better Living with strace and ltrace + Static Code Checkers: lint and Friends",
+       "pdf": 230,
+       "end": 233,
+       "id": "dbg.7.3",
+       "pages": 4,
+       "xp": 17,
+       "page": "230",
+       "page_end": "233",
+       "optional": false
+      },
+      {
+       "title": "Debugging Dynamically Allocated Memory (part 1/2)",
+       "pdf": 234,
+       "end": 240,
+       "id": "dbg.7.4",
+       "pages": 7,
+       "xp": 26,
+       "page": "234",
+       "page_end": "240",
+       "optional": false
+      },
+      {
+       "title": "Debugging Dynamically Allocated Memory (part 2/2)",
+       "pdf": 241,
+       "end": 247,
+       "id": "dbg.7.5",
+       "pages": 7,
+       "xp": 26,
+       "page": "241",
+       "page_end": "247",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 8,
+     "title": "Using GDB/DDD/Eclipse for Other Languages",
+     "optional": true,
+     "reading": [
+      {
+       "title": "Java",
+       "pdf": 248,
+       "end": 254,
+       "id": "dbg.8.1",
+       "pages": 7,
+       "xp": 26,
+       "page": "248",
+       "page_end": "254",
+       "optional": true
+      },
+      {
+       "title": "Perl",
+       "pdf": 255,
+       "end": 259,
+       "id": "dbg.8.2",
+       "pages": 5,
+       "xp": 20,
+       "page": "255",
+       "page_end": "259",
+       "optional": true
+      },
+      {
+       "title": "Python",
+       "pdf": 260,
+       "end": 263,
+       "id": "dbg.8.3",
+       "pages": 4,
+       "xp": 17,
+       "page": "260",
+       "page_end": "263",
+       "optional": true
+      },
+      {
+       "title": "Debugging SWIG Code",
+       "pdf": 264,
+       "end": 267,
+       "id": "dbg.8.4",
+       "pages": 4,
+       "xp": 17,
+       "page": "264",
+       "page_end": "267",
+       "optional": true
+      },
+      {
+       "title": "Assembly Language",
+       "pdf": 268,
+       "end": 271,
+       "id": "dbg.8.5",
+       "pages": 4,
+       "xp": 17,
+       "page": "268",
+       "page_end": "271",
+       "optional": true
+      }
+     ]
+    }
+   ],
+   "labs": [
+    {
+     "id": "dbg-1",
+     "stars": 1,
+     "title": "Debugger warm-up",
+     "after": "dbg.1",
+     "task": "Run any exercise under LLDB (`lldb .build/<name>`): break on main, step over/into, print variables, show a backtrace.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "dbg-2",
+     "stars": 2,
+     "title": "Conditional breakpoints + watchpoints",
+     "after": "dbg.2",
+     "task": "In a loop-heavy exercise (13-1 works), stop only when the loop index hits 15, then watch a variable and catch the line that changes it.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "dbg-3",
+     "stars": 2,
+     "title": "Crash autopsy",
+     "after": "dbg.4",
+     "task": "In lab/, write a program with a heap off-by-one and a use-after-free. Find each with LLDB, then with `./quest run <file> --asan`. Note what each tool told you.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "dbg-4",
+     "stars": 2,
+     "title": "Threads under the microscope",
+     "after": "dbg.5",
+     "task": "Copy your 19-3 queue into lab/ and add a deadlock. Use LLDB `thread list` / `bt all` to see who holds what, then catch a data race with --tsan.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "dbg-5",
+     "stars": 1,
+     "title": "Your own ~/.lldbinit",
+     "after": "dbg.1",
+     "task": "Create ~/.lldbinit with a couple of command aliases and settings you like (the LLDB version of GDB startup files).",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ],
+   "lab_dir": true
+  },
+  {
+   "key": "make",
+   "short": "GNU Make Book",
+   "title": "The GNU Make Book",
+   "author": "John Graham-Cumming (2015)",
+   "pdf_match": "gnu make book",
+   "dir": "side_quests/gnu_make",
+   "xp": 300,
+   "pairs": [
+    8,
+    21
+   ],
+   "pairs_text": "Chapter 8 (translation units and headers) and chapter 21 (Special Topics in Compilation)",
+   "note": "macOS ships GNU Make 3.81 as `make`. The Linux container has GNU Make 4.3, which this book's 4.x features need (or `brew install make` and run `gmake` on the Mac). Chapter 6 (the GMSL library) is optional.",
+   "chapters": [
+    {
+     "num": 1,
+     "title": "The Basics Revisited",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Getting Environment Variables into GNU make + Setting Variables from Outside the Makefile",
+       "pdf": 17,
+       "end": 21,
+       "id": "make.1.1",
+       "pages": 5,
+       "xp": 20,
+       "page": "1",
+       "page_end": "5",
+       "optional": false
+      },
+      {
+       "title": "The Environment Used by Commands → Target-Specific and Pattern-Specific Variables",
+       "pdf": 22,
+       "end": 28,
+       "id": "make.1.2",
+       "pages": 7,
+       "xp": 26,
+       "page": "6",
+       "page_end": "12",
+       "optional": false
+      },
+      {
+       "title": "Version Checking + Using Boolean Values",
+       "pdf": 29,
+       "end": 34,
+       "id": "make.1.3",
+       "pages": 6,
+       "xp": 23,
+       "page": "13",
+       "page_end": "18",
+       "optional": false
+      },
+      {
+       "title": "Logical Operations Using Boolean Values → Delayed Variable Assignment",
+       "pdf": 35,
+       "end": 39,
+       "id": "make.1.4",
+       "pages": 5,
+       "xp": 20,
+       "page": "19",
+       "page_end": "23",
+       "optional": false
+      },
+      {
+       "title": "Simple List Manipulation + User-Defined Functions",
+       "pdf": 40,
+       "end": 44,
+       "id": "make.1.5",
+       "pages": 5,
+       "xp": 20,
+       "page": "24",
+       "page_end": "28",
+       "optional": false
+      },
+      {
+       "title": "Recent GNU make Versions: 3.81, 3.82, and 4.0 (part 1/2)",
+       "pdf": 45,
+       "end": 51,
+       "id": "make.1.6",
+       "pages": 7,
+       "xp": 26,
+       "page": "29",
+       "page_end": "35",
+       "optional": false
+      },
+      {
+       "title": "Recent GNU make Versions: 3.81, 3.82, and 4.0 (part 2/2)",
+       "pdf": 52,
+       "end": 58,
+       "id": "make.1.7",
+       "pages": 7,
+       "xp": 26,
+       "page": "36",
+       "page_end": "42",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 2,
+     "title": "Makefile Debugging",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Printing the Value of a Makefile Variable + Dumping Every Makefile Variable",
+       "pdf": 59,
+       "end": 62,
+       "id": "make.2.1",
+       "pages": 4,
+       "xp": 17,
+       "page": "43",
+       "page_end": "46",
+       "optional": false
+      },
+      {
+       "title": "Tracing Variable Values",
+       "pdf": 63,
+       "end": 66,
+       "id": "make.2.2",
+       "pages": 4,
+       "xp": 17,
+       "page": "47",
+       "page_end": "50",
+       "optional": false
+      },
+      {
+       "title": "Tracing Rule Execution",
+       "pdf": 67,
+       "end": 70,
+       "id": "make.2.3",
+       "pages": 4,
+       "xp": 17,
+       "page": "51",
+       "page_end": "54",
+       "optional": false
+      },
+      {
+       "title": "Makefile Assertions + An Interactive GNU make Debugger",
+       "pdf": 71,
+       "end": 80,
+       "id": "make.2.4",
+       "pages": 10,
+       "xp": 35,
+       "page": "55",
+       "page_end": "64",
+       "optional": false
+      },
+      {
+       "title": "Dynamic Breakpoints in the GNU make Debugger",
+       "pdf": 81,
+       "end": 84,
+       "id": "make.2.5",
+       "pages": 4,
+       "xp": 17,
+       "page": "65",
+       "page_end": "68",
+       "optional": false
+      },
+      {
+       "title": "An Introduction to remake",
+       "pdf": 85,
+       "end": 92,
+       "id": "make.2.6",
+       "pages": 8,
+       "xp": 29,
+       "page": "69",
+       "page_end": "76",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 3,
+     "title": "Building and Rebuilding",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Rebuilding When CPPFLAGS Changes",
+       "pdf": 93,
+       "end": 97,
+       "id": "make.3.1",
+       "pages": 5,
+       "xp": 20,
+       "page": "77",
+       "page_end": "81",
+       "optional": false
+      },
+      {
+       "title": "Rebuilding When a File’s Checksum Changes",
+       "pdf": 98,
+       "end": 101,
+       "id": "make.3.2",
+       "pages": 4,
+       "xp": 17,
+       "page": "82",
+       "page_end": "85",
+       "optional": false
+      },
+      {
+       "title": "Automatic Dependency Generation",
+       "pdf": 102,
+       "end": 107,
+       "id": "make.3.3",
+       "pages": 6,
+       "xp": 23,
+       "page": "86",
+       "page_end": "91",
+       "optional": false
+      },
+      {
+       "title": "Atomic Rules in GNU make",
+       "pdf": 108,
+       "end": 111,
+       "id": "make.3.4",
+       "pages": 4,
+       "xp": 17,
+       "page": "92",
+       "page_end": "95",
+       "optional": false
+      },
+      {
+       "title": "Painless Non-recursive make (part 1/2)",
+       "pdf": 112,
+       "end": 118,
+       "id": "make.3.5",
+       "pages": 7,
+       "xp": 26,
+       "page": "96",
+       "page_end": "102",
+       "optional": false
+      },
+      {
+       "title": "Painless Non-recursive make (part 2/2)",
+       "pdf": 119,
+       "end": 124,
+       "id": "make.3.6",
+       "pages": 6,
+       "xp": 23,
+       "page": "103",
+       "page_end": "108",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 4,
+     "title": "Pitfalls and Problems",
+     "optional": false,
+     "reading": [
+      {
+       "title": "GNU make Gotcha: ifndef and ?= + $(shell) and := Go Together",
+       "pdf": 125,
+       "end": 130,
+       "id": "make.4.1",
+       "pages": 6,
+       "xp": 23,
+       "page": "109",
+       "page_end": "114",
+       "optional": false
+      },
+      {
+       "title": "$(eval) and Variable Caching",
+       "pdf": 131,
+       "end": 135,
+       "id": "make.4.2",
+       "pages": 5,
+       "xp": 20,
+       "page": "115",
+       "page_end": "119",
+       "optional": false
+      },
+      {
+       "title": "The Trouble with Hidden Targets + GNU make’s Escaping Rules",
+       "pdf": 136,
+       "end": 142,
+       "id": "make.4.3",
+       "pages": 7,
+       "xp": 26,
+       "page": "120",
+       "page_end": "126",
+       "optional": false
+      },
+      {
+       "title": "The Trouble with $(wildcard)",
+       "pdf": 143,
+       "end": 146,
+       "id": "make.4.4",
+       "pages": 4,
+       "xp": 17,
+       "page": "127",
+       "page_end": "130",
+       "optional": false
+      },
+      {
+       "title": "Making Directories",
+       "pdf": 147,
+       "end": 152,
+       "id": "make.4.5",
+       "pages": 6,
+       "xp": 23,
+       "page": "131",
+       "page_end": "136",
+       "optional": false
+      },
+      {
+       "title": "GNU make Meets Filenames with Spaces",
+       "pdf": 153,
+       "end": 156,
+       "id": "make.4.6",
+       "pages": 4,
+       "xp": 17,
+       "page": "137",
+       "page_end": "140",
+       "optional": false
+      },
+      {
+       "title": "Path Handling",
+       "pdf": 157,
+       "end": 162,
+       "id": "make.4.7",
+       "pages": 6,
+       "xp": 23,
+       "page": "141",
+       "page_end": "146",
+       "optional": false
+      },
+      {
+       "title": "Usman’s Law + Pitfalls and Benefits of GNU make Parallelization",
+       "pdf": 163,
+       "end": 172,
+       "id": "make.4.8",
+       "pages": 10,
+       "xp": 35,
+       "page": "147",
+       "page_end": "156",
+       "optional": false
+      },
+      {
+       "title": "Making $(wildcard) Recursive + Which Makefile Am I In?",
+       "pdf": 173,
+       "end": 176,
+       "id": "make.4.9",
+       "pages": 4,
+       "xp": 17,
+       "page": "157",
+       "page_end": "160",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 5,
+     "title": "Pushing the Envelope",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Doing Arithmetic",
+       "pdf": 177,
+       "end": 185,
+       "id": "make.5.1",
+       "pages": 9,
+       "xp": 32,
+       "page": "161",
+       "page_end": "169",
+       "optional": false
+      },
+      {
+       "title": "Making an XML Bill of Materials",
+       "pdf": 186,
+       "end": 189,
+       "id": "make.5.2",
+       "pages": 4,
+       "xp": 17,
+       "page": "170",
+       "page_end": "173",
+       "optional": false
+      },
+      {
+       "title": "Advanced User-Defined Functions",
+       "pdf": 190,
+       "end": 194,
+       "id": "make.5.3",
+       "pages": 5,
+       "xp": 20,
+       "page": "174",
+       "page_end": "178",
+       "optional": false
+      },
+      {
+       "title": "GNU make 4.0 Loadable Objects → Self-Documenting Makefiles",
+       "pdf": 195,
+       "end": 202,
+       "id": "make.5.4",
+       "pages": 8,
+       "xp": 29,
+       "page": "179",
+       "page_end": "186",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 6,
+     "title": "The GNU Make Standard Library",
+     "optional": true,
+     "reading": [
+      {
+       "title": "Importing the GMSL → Example Real-World GMSL Use",
+       "pdf": 203,
+       "end": 211,
+       "id": "make.6.1",
+       "pages": 9,
+       "xp": 32,
+       "page": "187",
+       "page_end": "195",
+       "optional": true
+      },
+      {
+       "title": "GMSL Reference (part 1/4)",
+       "pdf": 212,
+       "end": 219,
+       "id": "make.6.2",
+       "pages": 8,
+       "xp": 29,
+       "page": "196",
+       "page_end": "203",
+       "optional": true
+      },
+      {
+       "title": "GMSL Reference (part 2/4)",
+       "pdf": 220,
+       "end": 227,
+       "id": "make.6.3",
+       "pages": 8,
+       "xp": 29,
+       "page": "204",
+       "page_end": "211",
+       "optional": true
+      },
+      {
+       "title": "GMSL Reference (part 3/4)",
+       "pdf": 228,
+       "end": 235,
+       "id": "make.6.4",
+       "pages": 8,
+       "xp": 29,
+       "page": "212",
+       "page_end": "219",
+       "optional": true
+      },
+      {
+       "title": "GMSL Reference (part 4/4)",
+       "pdf": 236,
+       "end": 240,
+       "id": "make.6.5",
+       "pages": 5,
+       "xp": 20,
+       "page": "220",
+       "page_end": "224",
+       "optional": true
+      }
+     ]
+    }
+   ],
+   "labs": [
+    {
+     "id": "make-1",
+     "stars": 2,
+     "title": "A Makefile for one chapter",
+     "after": "make.1",
+     "task": "In lab/, write a Makefile whose pattern rule builds every ch02_types/exercises/*.cpp into lab/build/; `make -j` builds all, `make clean` cleans.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "make-2",
+     "stars": 1,
+     "title": "Debug a Makefile",
+     "after": "make.2",
+     "task": "Add a `print-%` rule and use `make -p` / `--debug` to inspect variables and why targets rebuild.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "make-3",
+     "stars": 2,
+     "title": "Automatic dependencies",
+     "after": "make.3",
+     "task": "Build ch08's 08-01_ranges folder with -MMD -MP; touch the header and confirm only the files that include it rebuild.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "make-4",
+     "stars": 2,
+     "title": "Rebuild when flags change",
+     "after": "make.3",
+     "task": "Make the build redo everything when CXXFLAGS changes, using the signature-file trick from chapter 3.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "make-5",
+     "stars": 3,
+     "title": "One Makefile to build them all",
+     "after": "make.3",
+     "task": "A non-recursive Makefile that builds every exercise and boss in this folder in parallel.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "make-6",
+     "stars": 1,
+     "title": "Self-documenting help",
+     "after": "make.5",
+     "task": "`make help` lists every target with a one-line description pulled from the Makefile itself.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ],
+   "lab_dir": true
+  },
+  {
+   "key": "prag",
+   "short": "Pragmatic Programmer",
+   "title": "The Pragmatic Programmer, 20th Anniversary Edition",
+   "author": "David Thomas & Andrew Hunt (2019)",
+   "pdf_match": "pragmatic programmer",
+   "dir": "side_quests/pragmatic_programmer",
+   "xp": 400,
+   "pairs": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21
+   ],
+   "pairs_text": "Any time. One Topic per study day is a good pace, and the exercises have answers in Appendix A2",
+   "note": "Each Topic is one quest. Many Topics end with exercises; try them, then compare with the answers in Appendix A2 (p.476).",
+   "chapters": [
+    {
+     "num": 1,
+     "title": "A Pragmatic Philosophy",
+     "reading": [
+      {
+       "title": "Topic 1. It’s Your Life",
+       "pdf": 34,
+       "end": 37,
+       "id": "prag.1.1",
+       "pages": 4,
+       "xp": 17,
+       "page": "34",
+       "page_end": "37",
+       "optional": false
+      },
+      {
+       "title": "Topic 2. The Cat Ate My Source Code",
+       "pdf": 38,
+       "end": 41,
+       "id": "prag.1.2",
+       "pages": 4,
+       "xp": 17,
+       "page": "38",
+       "page_end": "41",
+       "optional": false
+      },
+      {
+       "title": "Topic 3. Software Entropy",
+       "pdf": 42,
+       "end": 45,
+       "id": "prag.1.3",
+       "pages": 4,
+       "xp": 17,
+       "page": "42",
+       "page_end": "45",
+       "optional": false
+      },
+      {
+       "title": "Topic 4. Stone Soup and Boiled Frogs",
+       "pdf": 46,
+       "end": 49,
+       "id": "prag.1.4",
+       "pages": 4,
+       "xp": 17,
+       "page": "46",
+       "page_end": "49",
+       "optional": false
+      },
+      {
+       "title": "Topic 5. Good-Enough Software",
+       "pdf": 50,
+       "end": 53,
+       "id": "prag.1.5",
+       "pages": 4,
+       "xp": 17,
+       "page": "50",
+       "page_end": "53",
+       "optional": false
+      },
+      {
+       "title": "Topic 6. Your Knowledge Portfolio",
+       "pdf": 54,
+       "end": 62,
+       "id": "prag.1.6",
+       "pages": 9,
+       "xp": 32,
+       "page": "54",
+       "page_end": "62",
+       "optional": false
+      },
+      {
+       "title": "Topic 7. Communicate!",
+       "pdf": 63,
+       "end": 72,
+       "id": "prag.1.7",
+       "pages": 10,
+       "xp": 35,
+       "page": "63",
+       "page_end": "72",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 2,
+     "title": "A Pragmatic Approach",
+     "reading": [
+      {
+       "title": "Topic 8. The Essence of Good Design",
+       "pdf": 73,
+       "end": 78,
+       "id": "prag.2.1",
+       "pages": 6,
+       "xp": 23,
+       "page": "73",
+       "page_end": "78",
+       "optional": false
+      },
+      {
+       "title": "Topic 9. DRY—The Evils of Duplication (part 1/2)",
+       "pdf": 79,
+       "end": 85,
+       "id": "prag.2.2",
+       "pages": 7,
+       "xp": 26,
+       "page": "79",
+       "page_end": "85",
+       "optional": false
+      },
+      {
+       "title": "Topic 9. DRY—The Evils of Duplication (part 2/2)",
+       "pdf": 86,
+       "end": 91,
+       "id": "prag.2.3",
+       "pages": 6,
+       "xp": 23,
+       "page": "86",
+       "page_end": "91",
+       "optional": false
+      },
+      {
+       "title": "Topic 10. Orthogonality",
+       "pdf": 92,
+       "end": 103,
+       "id": "prag.2.4",
+       "pages": 12,
+       "xp": 35,
+       "page": "92",
+       "page_end": "103",
+       "optional": false
+      },
+      {
+       "title": "Topic 11. Reversibility",
+       "pdf": 104,
+       "end": 108,
+       "id": "prag.2.5",
+       "pages": 5,
+       "xp": 20,
+       "page": "104",
+       "page_end": "108",
+       "optional": false
+      },
+      {
+       "title": "Topic 12. Tracer Bullets",
+       "pdf": 109,
+       "end": 117,
+       "id": "prag.2.6",
+       "pages": 9,
+       "xp": 32,
+       "page": "109",
+       "page_end": "117",
+       "optional": false
+      },
+      {
+       "title": "Topic 13. Prototypes and Post-it Notes",
+       "pdf": 118,
+       "end": 123,
+       "id": "prag.2.7",
+       "pages": 6,
+       "xp": 23,
+       "page": "118",
+       "page_end": "123",
+       "optional": false
+      },
+      {
+       "title": "Topic 14. Domain Languages",
+       "pdf": 124,
+       "end": 132,
+       "id": "prag.2.8",
+       "pages": 9,
+       "xp": 32,
+       "page": "124",
+       "page_end": "132",
+       "optional": false
+      },
+      {
+       "title": "Topic 15. Estimating",
+       "pdf": 133,
+       "end": 142,
+       "id": "prag.2.9",
+       "pages": 10,
+       "xp": 35,
+       "page": "133",
+       "page_end": "142",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 3,
+     "title": "The Basic Tools",
+     "reading": [
+      {
+       "title": "Topic 16. The Power of Plain Text",
+       "pdf": 143,
+       "end": 151,
+       "id": "prag.3.1",
+       "pages": 9,
+       "xp": 32,
+       "page": "143",
+       "page_end": "151",
+       "optional": false
+      },
+      {
+       "title": "Topic 17. Shell Games",
+       "pdf": 152,
+       "end": 155,
+       "id": "prag.3.2",
+       "pages": 4,
+       "xp": 17,
+       "page": "152",
+       "page_end": "155",
+       "optional": false
+      },
+      {
+       "title": "Topic 18. Power Editing",
+       "pdf": 156,
+       "end": 160,
+       "id": "prag.3.3",
+       "pages": 5,
+       "xp": 20,
+       "page": "156",
+       "page_end": "160",
+       "optional": false
+      },
+      {
+       "title": "Topic 19. Version Control",
+       "pdf": 161,
+       "end": 167,
+       "id": "prag.3.4",
+       "pages": 7,
+       "xp": 26,
+       "page": "161",
+       "page_end": "167",
+       "optional": false
+      },
+      {
+       "title": "Topic 20. Debugging (part 1/2)",
+       "pdf": 168,
+       "end": 174,
+       "id": "prag.3.5",
+       "pages": 7,
+       "xp": 26,
+       "page": "168",
+       "page_end": "174",
+       "optional": false
+      },
+      {
+       "title": "Topic 20. Debugging (part 2/2)",
+       "pdf": 175,
+       "end": 180,
+       "id": "prag.3.6",
+       "pages": 6,
+       "xp": 23,
+       "page": "175",
+       "page_end": "180",
+       "optional": false
+      },
+      {
+       "title": "Topic 21. Text Manipulation",
+       "pdf": 181,
+       "end": 184,
+       "id": "prag.3.7",
+       "pages": 4,
+       "xp": 17,
+       "page": "181",
+       "page_end": "184",
+       "optional": false
+      },
+      {
+       "title": "Topic 22. Engineering Daybooks",
+       "pdf": 185,
+       "end": 187,
+       "id": "prag.3.8",
+       "pages": 3,
+       "xp": 14,
+       "page": "185",
+       "page_end": "187",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 4,
+     "title": "Pragmatic Paranoia",
+     "reading": [
+      {
+       "title": "Topic 23. Design by Contract (part 1/2)",
+       "pdf": 188,
+       "end": 195,
+       "id": "prag.4.1",
+       "pages": 8,
+       "xp": 29,
+       "page": "188",
+       "page_end": "195",
+       "optional": false
+      },
+      {
+       "title": "Topic 23. Design by Contract (part 2/2)",
+       "pdf": 196,
+       "end": 202,
+       "id": "prag.4.2",
+       "pages": 7,
+       "xp": 26,
+       "page": "196",
+       "page_end": "202",
+       "optional": false
+      },
+      {
+       "title": "Topic 24. Dead Programs Tell No Lies",
+       "pdf": 203,
+       "end": 206,
+       "id": "prag.4.3",
+       "pages": 4,
+       "xp": 17,
+       "page": "203",
+       "page_end": "206",
+       "optional": false
+      },
+      {
+       "title": "Topic 25. Assertive Programming",
+       "pdf": 207,
+       "end": 211,
+       "id": "prag.4.4",
+       "pages": 5,
+       "xp": 20,
+       "page": "207",
+       "page_end": "211",
+       "optional": false
+      },
+      {
+       "title": "Topic 26. How to Balance Resources",
+       "pdf": 212,
+       "end": 221,
+       "id": "prag.4.5",
+       "pages": 10,
+       "xp": 35,
+       "page": "212",
+       "page_end": "221",
+       "optional": false
+      },
+      {
+       "title": "Topic 27. Don’t Outrun Your Headlights",
+       "pdf": 222,
+       "end": 225,
+       "id": "prag.4.6",
+       "pages": 4,
+       "xp": 17,
+       "page": "222",
+       "page_end": "225",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 5,
+     "title": "Bend, or Break",
+     "reading": [
+      {
+       "title": "Topic 28. Decoupling (part 1/2)",
+       "pdf": 226,
+       "end": 232,
+       "id": "prag.5.1",
+       "pages": 7,
+       "xp": 26,
+       "page": "226",
+       "page_end": "232",
+       "optional": false
+      },
+      {
+       "title": "Topic 28. Decoupling (part 2/2)",
+       "pdf": 233,
+       "end": 238,
+       "id": "prag.5.2",
+       "pages": 6,
+       "xp": 23,
+       "page": "233",
+       "page_end": "238",
+       "optional": false
+      },
+      {
+       "title": "Topic 29. Juggling the Real World (part 1/2)",
+       "pdf": 239,
+       "end": 246,
+       "id": "prag.5.3",
+       "pages": 8,
+       "xp": 29,
+       "page": "239",
+       "page_end": "246",
+       "optional": false
+      },
+      {
+       "title": "Topic 29. Juggling the Real World (part 2/2)",
+       "pdf": 247,
+       "end": 254,
+       "id": "prag.5.4",
+       "pages": 8,
+       "xp": 29,
+       "page": "247",
+       "page_end": "254",
+       "optional": false
+      },
+      {
+       "title": "Topic 30. Transforming Programming (part 1/2)",
+       "pdf": 255,
+       "end": 263,
+       "id": "prag.5.5",
+       "pages": 9,
+       "xp": 32,
+       "page": "255",
+       "page_end": "263",
+       "optional": false
+      },
+      {
+       "title": "Topic 30. Transforming Programming (part 2/2)",
+       "pdf": 264,
+       "end": 271,
+       "id": "prag.5.6",
+       "pages": 8,
+       "xp": 29,
+       "page": "264",
+       "page_end": "271",
+       "optional": false
+      },
+      {
+       "title": "Topic 31. Inheritance Tax",
+       "pdf": 272,
+       "end": 283,
+       "id": "prag.5.7",
+       "pages": 12,
+       "xp": 35,
+       "page": "272",
+       "page_end": "283",
+       "optional": false
+      },
+      {
+       "title": "Topic 32. Configuration",
+       "pdf": 284,
+       "end": 288,
+       "id": "prag.5.8",
+       "pages": 5,
+       "xp": 20,
+       "page": "284",
+       "page_end": "288",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 6,
+     "title": "Concurrency",
+     "reading": [
+      {
+       "title": "Topic 33. Breaking Temporal Coupling",
+       "pdf": 289,
+       "end": 298,
+       "id": "prag.6.1",
+       "pages": 10,
+       "xp": 35,
+       "page": "289",
+       "page_end": "298",
+       "optional": false
+      },
+      {
+       "title": "Topic 34. Shared State Is Incorrect State",
+       "pdf": 299,
+       "end": 308,
+       "id": "prag.6.2",
+       "pages": 10,
+       "xp": 35,
+       "page": "299",
+       "page_end": "308",
+       "optional": false
+      },
+      {
+       "title": "Topic 35. Actors and Processes",
+       "pdf": 309,
+       "end": 316,
+       "id": "prag.6.3",
+       "pages": 8,
+       "xp": 29,
+       "page": "309",
+       "page_end": "316",
+       "optional": false
+      },
+      {
+       "title": "Topic 36. Blackboards",
+       "pdf": 317,
+       "end": 323,
+       "id": "prag.6.4",
+       "pages": 7,
+       "xp": 26,
+       "page": "317",
+       "page_end": "323",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 7,
+     "title": "While You Are Coding",
+     "reading": [
+      {
+       "title": "Topic 37. Listen to Your Lizard Brain",
+       "pdf": 324,
+       "end": 333,
+       "id": "prag.7.1",
+       "pages": 10,
+       "xp": 35,
+       "page": "324",
+       "page_end": "333",
+       "optional": false
+      },
+      {
+       "title": "Topic 38. Programming by Coincidence",
+       "pdf": 334,
+       "end": 342,
+       "id": "prag.7.2",
+       "pages": 9,
+       "xp": 32,
+       "page": "334",
+       "page_end": "342",
+       "optional": false
+      },
+      {
+       "title": "Topic 39. Algorithm Speed",
+       "pdf": 343,
+       "end": 353,
+       "id": "prag.7.3",
+       "pages": 11,
+       "xp": 35,
+       "page": "343",
+       "page_end": "353",
+       "optional": false
+      },
+      {
+       "title": "Topic 40. Refactoring",
+       "pdf": 354,
+       "end": 360,
+       "id": "prag.7.4",
+       "pages": 7,
+       "xp": 26,
+       "page": "354",
+       "page_end": "360",
+       "optional": false
+      },
+      {
+       "title": "Topic 41. Test to Code (part 1/2)",
+       "pdf": 361,
+       "end": 367,
+       "id": "prag.7.5",
+       "pages": 7,
+       "xp": 26,
+       "page": "361",
+       "page_end": "367",
+       "optional": false
+      },
+      {
+       "title": "Topic 41. Test to Code (part 2/2)",
+       "pdf": 368,
+       "end": 374,
+       "id": "prag.7.6",
+       "pages": 7,
+       "xp": 26,
+       "page": "368",
+       "page_end": "374",
+       "optional": false
+      },
+      {
+       "title": "Topic 42. Property-Based Testing",
+       "pdf": 375,
+       "end": 384,
+       "id": "prag.7.7",
+       "pages": 10,
+       "xp": 35,
+       "page": "375",
+       "page_end": "384",
+       "optional": false
+      },
+      {
+       "title": "Topic 43. Stay Safe Out There",
+       "pdf": 385,
+       "end": 394,
+       "id": "prag.7.8",
+       "pages": 10,
+       "xp": 35,
+       "page": "385",
+       "page_end": "394",
+       "optional": false
+      },
+      {
+       "title": "Topic 44. Naming Things",
+       "pdf": 395,
+       "end": 402,
+       "id": "prag.7.9",
+       "pages": 8,
+       "xp": 29,
+       "page": "395",
+       "page_end": "402",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 8,
+     "title": "Before the Project",
+     "reading": [
+      {
+       "title": "Topic 45. The Requirements Pit (part 1/2)",
+       "pdf": 403,
+       "end": 410,
+       "id": "prag.8.1",
+       "pages": 8,
+       "xp": 29,
+       "page": "403",
+       "page_end": "410",
+       "optional": false
+      },
+      {
+       "title": "Topic 45. The Requirements Pit (part 2/2)",
+       "pdf": 411,
+       "end": 417,
+       "id": "prag.8.2",
+       "pages": 7,
+       "xp": 26,
+       "page": "411",
+       "page_end": "417",
+       "optional": false
+      },
+      {
+       "title": "Topic 46. Solving Impossible Puzzles",
+       "pdf": 418,
+       "end": 423,
+       "id": "prag.8.3",
+       "pages": 6,
+       "xp": 23,
+       "page": "418",
+       "page_end": "423",
+       "optional": false
+      },
+      {
+       "title": "Topic 47. Working Together",
+       "pdf": 424,
+       "end": 428,
+       "id": "prag.8.4",
+       "pages": 5,
+       "xp": 20,
+       "page": "424",
+       "page_end": "428",
+       "optional": false
+      },
+      {
+       "title": "Topic 48. The Essence of Agility",
+       "pdf": 429,
+       "end": 434,
+       "id": "prag.8.5",
+       "pages": 6,
+       "xp": 23,
+       "page": "429",
+       "page_end": "434",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 9,
+     "title": "Pragmatic Projects",
+     "reading": [
+      {
+       "title": "Topic 49. Pragmatic Teams",
+       "pdf": 435,
+       "end": 445,
+       "id": "prag.9.1",
+       "pages": 11,
+       "xp": 35,
+       "page": "435",
+       "page_end": "445",
+       "optional": false
+      },
+      {
+       "title": "Topic 50. Coconuts Don’t Cut It",
+       "pdf": 446,
+       "end": 451,
+       "id": "prag.9.2",
+       "pages": 6,
+       "xp": 23,
+       "page": "446",
+       "page_end": "451",
+       "optional": false
+      },
+      {
+       "title": "Topic 51. Pragmatic Starter Kit",
+       "pdf": 452,
+       "end": 461,
+       "id": "prag.9.3",
+       "pages": 10,
+       "xp": 35,
+       "page": "452",
+       "page_end": "461",
+       "optional": false
+      },
+      {
+       "title": "Topic 52. Delight Your Users",
+       "pdf": 462,
+       "end": 464,
+       "id": "prag.9.4",
+       "pages": 3,
+       "xp": 14,
+       "page": "462",
+       "page_end": "464",
+       "optional": false
+      },
+      {
+       "title": "Topic 53. Pride and Prejudice",
+       "pdf": 465,
+       "end": 468,
+       "id": "prag.9.5",
+       "pages": 4,
+       "xp": 17,
+       "page": "465",
+       "page_end": "468",
+       "optional": false
+      }
+     ]
+    }
+   ],
+   "labs": [
+    {
+     "id": "prag-1",
+     "stars": 1,
+     "title": "Knowledge portfolio",
+     "after": "prag.1",
+     "task": "Topic 6: write 3-month learning goals in journal.md, including one thing that isn't C++.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "prag-2",
+     "stars": 2,
+     "title": "DRY sweep",
+     "after": "prag.2",
+     "task": "Topic 9: find logic duplicated across your exercises/bosses and give it one home.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "prag-3",
+     "stars": 2,
+     "title": "Tracer bullet",
+     "after": "prag.2",
+     "task": "Topic 12: start your next boss as the thinnest end-to-end version that runs, then flesh it out.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "prag-4",
+     "stars": 1,
+     "title": "Engineering daybook",
+     "after": "prag.3",
+     "task": "Topic 22: write in journal.md on 7 study days in a row.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "prag-5",
+     "stars": 2,
+     "title": "Contracts + assertions",
+     "after": "prag.4",
+     "task": "Topics 23–25: add preconditions, postconditions and invariants (assert) to one of your classes, e.g. DynArray or Rational.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "prag-6",
+     "stars": 2,
+     "title": "Property-based test",
+     "after": "prag.7",
+     "task": "Topic 42: randomized tests that check properties (sort output is sorted and a permutation; a + b - b == a for Rational).",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "prag-7",
+     "stars": 1,
+     "title": "Naming pass",
+     "after": "prag.7",
+     "task": "Topic 44: find and rename the 10 worst names in your code.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  },
+  {
+   "key": "gpg",
+   "short": "PGP & GPG",
+   "title": "PGP & GPG: Email for the Practical Paranoid",
+   "author": "Michael W. Lucas (2006)",
+   "pdf_match": "practical paranoid",
+   "dir": "side_quests/pgp_gpg",
+   "xp": 200,
+   "pairs": [],
+   "pairs_text": "Standalone. A good break from C++, and the git-signing lab is useful straight away",
+   "note": "The concepts hold up; the software doesn't. Chapters about commercial PGP and 2006-era mail clients are optional. Use modern GnuPG (`brew install gnupg`) and its defaults (ed25519 keys).",
+   "chapters": [
+    {
+     "num": 0,
+     "title": "Introduction",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Introduction",
+       "pdf": 18,
+       "end": 29,
+       "id": "gpg.0.1",
+       "pages": 12,
+       "xp": 35,
+       "page": "1",
+       "page_end": "12",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 1,
+     "title": "Cryptography Kindergarten",
+     "optional": false,
+     "reading": [
+      {
+       "title": "What OpenPGP Can Do + Terminology",
+       "pdf": 30,
+       "end": 33,
+       "id": "gpg.1.1",
+       "pages": 4,
+       "xp": 17,
+       "page": "13",
+       "page_end": "16",
+       "optional": false
+      },
+      {
+       "title": "Goals of PGP’s Cryptography + Encryption Algorithms",
+       "pdf": 34,
+       "end": 38,
+       "id": "gpg.1.2",
+       "pages": 5,
+       "xp": 20,
+       "page": "17",
+       "page_end": "21",
+       "optional": false
+      },
+      {
+       "title": "Public-Key Encryption → Passphrases and Private Keys",
+       "pdf": 39,
+       "end": 43,
+       "id": "gpg.1.3",
+       "pages": 5,
+       "xp": 20,
+       "page": "22",
+       "page_end": "26",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 2,
+     "title": "Understanding OpenPGP",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Understanding OpenPGP",
+       "pdf": 44,
+       "end": 55,
+       "id": "gpg.2.1",
+       "pages": 12,
+       "xp": 35,
+       "page": "27",
+       "page_end": "38",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 3,
+     "title": "Installing PGP",
+     "optional": true,
+     "reading": [
+      {
+       "title": "Downloading PGP + Installing PGP",
+       "pdf": 56,
+       "end": 61,
+       "id": "gpg.3.1",
+       "pages": 6,
+       "xp": 23,
+       "page": "39",
+       "page_end": "44",
+       "optional": true
+      },
+      {
+       "title": "PGP Key Backups → Keyservers and PGP",
+       "pdf": 62,
+       "end": 69,
+       "id": "gpg.3.2",
+       "pages": 8,
+       "xp": 29,
+       "page": "45",
+       "page_end": "52",
+       "optional": true
+      }
+     ]
+    },
+    {
+     "num": 4,
+     "title": "Installing GnuPG",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Downloading GnuPG → GnuPG Home Directory",
+       "pdf": 70,
+       "end": 73,
+       "id": "gpg.4.1",
+       "pages": 4,
+       "xp": 17,
+       "page": "53",
+       "page_end": "56",
+       "optional": false
+      },
+      {
+       "title": "Installing GnuPG on Windows + Graphical GnuPG Installation",
+       "pdf": 74,
+       "end": 83,
+       "id": "gpg.4.2",
+       "pages": 10,
+       "xp": 35,
+       "page": "57",
+       "page_end": "66",
+       "optional": true
+      },
+      {
+       "title": "Installing GnuPG on Unix-like Systems + Building from Source Code",
+       "pdf": 84,
+       "end": 88,
+       "id": "gpg.4.3",
+       "pages": 5,
+       "xp": 20,
+       "page": "67",
+       "page_end": "71",
+       "optional": false
+      },
+      {
+       "title": "Command-Line GnuPG Keypairs",
+       "pdf": 89,
+       "end": 92,
+       "id": "gpg.4.4",
+       "pages": 4,
+       "xp": 17,
+       "page": "72",
+       "page_end": "75",
+       "optional": false
+      },
+      {
+       "title": "GnuPG Revocation Certificates + Publicizing Your Key",
+       "pdf": 93,
+       "end": 97,
+       "id": "gpg.4.5",
+       "pages": 5,
+       "xp": 20,
+       "page": "76",
+       "page_end": "80",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 5,
+     "title": "The Web of Trust",
+     "optional": false,
+     "reading": [
+      {
+       "title": "The Web of Trust",
+       "pdf": 98,
+       "end": 107,
+       "id": "gpg.5.1",
+       "pages": 10,
+       "xp": 35,
+       "page": "81",
+       "page_end": "90",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 6,
+     "title": "PGP Key Management",
+     "optional": true,
+     "reading": [
+      {
+       "title": "PGP Key Management",
+       "pdf": 108,
+       "end": 115,
+       "id": "gpg.6.1",
+       "pages": 8,
+       "xp": 29,
+       "page": "91",
+       "page_end": "98",
+       "optional": true
+      }
+     ]
+    },
+    {
+     "num": 7,
+     "title": "Managing GnuPG Keys",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Keyservers + Adding Keys to Your Keyring",
+       "pdf": 116,
+       "end": 121,
+       "id": "gpg.7.1",
+       "pages": 6,
+       "xp": 23,
+       "page": "99",
+       "page_end": "104",
+       "optional": false
+      },
+      {
+       "title": "Signing a Key",
+       "pdf": 122,
+       "end": 125,
+       "id": "gpg.7.2",
+       "pages": 4,
+       "xp": 17,
+       "page": "105",
+       "page_end": "108",
+       "optional": false
+      },
+      {
+       "title": "Updating Keys → Building the Web of Trust with GnuPG",
+       "pdf": 126,
+       "end": 131,
+       "id": "gpg.7.3",
+       "pages": 6,
+       "xp": 23,
+       "page": "109",
+       "page_end": "114",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 8,
+     "title": "OpenPGP and Email",
+     "optional": false,
+     "reading": [
+      {
+       "title": "OpenPGP and Email",
+       "pdf": 132,
+       "end": 141,
+       "id": "gpg.8.1",
+       "pages": 10,
+       "xp": 35,
+       "page": "115",
+       "page_end": "124",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 9,
+     "title": "PGP and Email",
+     "optional": true,
+     "reading": [
+      {
+       "title": "PGP and Email",
+       "pdf": 142,
+       "end": 153,
+       "id": "gpg.9.1",
+       "pages": 12,
+       "xp": 35,
+       "page": "125",
+       "page_end": "136",
+       "optional": true
+      }
+     ]
+    },
+    {
+     "num": 10,
+     "title": "GnuPG and Email",
+     "optional": true,
+     "reading": [
+      {
+       "title": "Microsoft Mail Clients and GnuPG + Outlook Express and GnuPG",
+       "pdf": 154,
+       "end": 157,
+       "id": "gpg.10.1",
+       "pages": 4,
+       "xp": 17,
+       "page": "137",
+       "page_end": "140",
+       "optional": true
+      },
+      {
+       "title": "Outlook and GnuPG",
+       "pdf": 158,
+       "end": 161,
+       "id": "gpg.10.2",
+       "pages": 4,
+       "xp": 17,
+       "page": "141",
+       "page_end": "144",
+       "optional": true
+      },
+      {
+       "title": "Decrypting PGP/MIME Messages with Microsoft Mail Clients + Thunderbird and GnuPG",
+       "pdf": 162,
+       "end": 171,
+       "id": "gpg.10.3",
+       "pages": 10,
+       "xp": 35,
+       "page": "145",
+       "page_end": "154",
+       "optional": true
+      }
+     ]
+    },
+    {
+     "num": 11,
+     "title": "Other OpenPGP Considerations",
+     "optional": false,
+     "reading": [
+      {
+       "title": "Other OpenPGP Considerations",
+       "pdf": 172,
+       "end": 183,
+       "id": "gpg.11.1",
+       "pages": 12,
+       "xp": 35,
+       "page": "155",
+       "page_end": "166",
+       "optional": false
+      }
+     ]
+    },
+    {
+     "num": 12,
+     "title": "Introduction to PGP Command Line",
+     "optional": true,
+     "reading": [
+      {
+       "title": "Introduction to PGP Command Line",
+       "pdf": 184,
+       "end": 193,
+       "id": "gpg.12.1",
+       "pages": 10,
+       "xp": 35,
+       "page": "167",
+       "page_end": "176",
+       "optional": true
+      }
+     ]
+    },
+    {
+     "num": 13,
+     "title": "GnuPG Command Line Summary",
+     "optional": false,
+     "reading": [
+      {
+       "title": "GnuPG Command Line Summary",
+       "pdf": 194,
+       "end": 199,
+       "id": "gpg.13.1",
+       "pages": 6,
+       "xp": 23,
+       "page": "177",
+       "page_end": "182",
+       "optional": false
+      }
+     ]
+    }
+   ],
+   "labs": [
+    {
+     "id": "gpg-1",
+     "stars": 1,
+     "title": "Install + make a key",
+     "after": "gpg.4",
+     "task": "`brew install gnupg`, then `gpg --full-generate-key` (accept the modern ECC default) with an expiry date.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "gpg-2",
+     "stars": 1,
+     "title": "Revocation + backup",
+     "after": "gpg.4",
+     "task": "Find the revocation certificate GnuPG made (~/.gnupg/openpgp-revocs.d) and back up your secret key somewhere offline.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "gpg-3",
+     "stars": 1,
+     "title": "Encrypt, sign, verify",
+     "after": "gpg.7",
+     "task": "Encrypt a file to yourself and decrypt it; make a detached signature and verify it.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "gpg-4",
+     "stars": 2,
+     "title": "Signed git commits",
+     "after": "gpg.7",
+     "task": "Configure git to sign your commits with your key and check them with `git log --show-signature`.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    },
+    {
+     "id": "gpg-5",
+     "stars": 1,
+     "title": "Verify a real download",
+     "after": "gpg.5",
+     "task": "Check a real release's signature (.sig/.asc), e.g. a GnuPG tarball, against its publisher's key.",
+     "kind": "lab",
+     "file": null,
+     "optional": false,
+     "boost": false,
+     "bonus": false
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,23 @@
+{
+  // VS Code: "Dev Containers: Reopen in Container" opens this folder inside Linux.
+  "name": "C++ Crash Course · Linux (GCC, GDB, Valgrind)",
+  "build": { "dockerfile": "Dockerfile" },
+  // GDB, strace and the sanitizers need permission to trace processes.
+  "runArgs": ["--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined"],
+  "remoteUser": "ubuntu",
+  "forwardPorts": [4747],
+  "portsAttributes": { "4747": { "label": "quest world", "onAutoForward": "openBrowser" } },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cpptools"
+      ],
+      "settings": {
+        "C_Cpp.intelliSenseEngine": "disabled",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "postCreateCommand": "echo; g++ --version | head -1; gdb --version | head -1; valgrind --version; echo 'Ready. Try: ./quest run 1-1'"
+}

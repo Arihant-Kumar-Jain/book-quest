@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Quest Reader">
+<meta name="theme-color" content="#0a0d16">
+<title>Quest Reader</title>
+<style>
+:root{
+  --bg:#0a0d16; --bar:rgba(10,14,24,.94); --line:rgba(230,192,104,.22); --line-2:rgba(255,255,255,.1);
+  --text:#efe6d2; --muted:#a3abbd; --gold:#e6c068; --gold-2:#f6dc93; --teal:#5fd4c0; --red:#ef6a5f;
+  --display:ui-serif, "New York", Georgia, serif; --ui:-apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--ui);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html:not(.scroll),html:not(.scroll) body{height:100%;overflow:hidden;overscroll-behavior:none}
+button,select{font:inherit;color:inherit}
+img,canvas{-webkit-user-drag:none}
+
+/* page mode: one page at a time, fitted to the screen */
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom}
+html.scroll #stage{display:none}
+.sheet{background:#fff;border-radius:3px;box-shadow:0 12px 50px rgba(0,0,0,.65);display:block}
+.sheet.in-next{animation:inR .18s ease-out}
+.sheet.in-prev{animation:inL .18s ease-out}
+@keyframes inR{from{opacity:.5;transform:translateX(22px)}}
+@keyframes inL{from{opacity:.5;transform:translateX(-22px)}}
+
+/* scroll mode: every page in one column, drawn as it comes near the screen */
+#roll{display:none;padding:calc(env(safe-area-inset-top) + 8px) 0 calc(env(safe-area-inset-bottom) + 8px)}
+html.scroll #roll{display:block}
+#roll .pg{position:relative;margin:0 auto 10px;background:#fff;border-radius:2px;box-shadow:0 6px 24px rgba(0,0,0,.5);contain:strict}
+#roll .pg::before{content:attr(data-label);position:absolute;inset:0;display:grid;place-items:center;color:#d0d0d0;font-size:28px;font-weight:600}
+#roll .pg>*{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+.bar{position:fixed;left:0;right:0;z-index:5;background:var(--bar);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:transform .25s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;gap:10px}
+#top{top:0;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+#bot{bottom:0;padding:10px 14px calc(env(safe-area-inset-bottom) + 12px);border-top:1px solid var(--line-2)}
+body.hide #top{transform:translateY(-110%)}
+body.hide #bot{transform:translateY(110%)}
+select{background:rgba(255,255,255,.06);border:1px solid var(--line-2);border-radius:10px;padding:8px 10px;font-weight:600;font-size:14px;max-width:240px}
+.btn{border:1px solid rgba(230,192,104,.55);background:linear-gradient(180deg,#3a2f14,#251e0d);color:var(--gold-2);font-weight:600;font-size:14px;border-radius:10px;padding:8px 12px;white-space:nowrap;cursor:pointer;text-decoration:none}
+.btn.ghost{background:rgba(255,255,255,.05);border-color:var(--line-2);color:var(--text)}
+.btn:disabled{opacity:.5}
+.seg{display:flex;border:1px solid var(--line-2);border-radius:10px;overflow:hidden;flex:none}
+.seg button{border:0;background:rgba(255,255,255,.04);padding:8px 11px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button.on{background:rgba(230,192,104,.18);color:var(--gold-2)}
+#quest{display:flex;align-items:center;gap:8px;min-width:0;flex:1 1 300px;font-size:14px}
+#quest .qk{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--gold);flex:none}
+#quest .qt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#quest .qp{color:var(--muted);font-size:12px;flex:none}
+#quest .ok{color:var(--teal);font-weight:600;font-size:13px;flex:none}
+#link{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);flex:none}
+#link i{width:8px;height:8px;border-radius:50%;background:#6c7588}
+#link.on i{background:var(--teal);box-shadow:0 0 8px var(--teal)}
+#slider{flex:1;accent-color:var(--gold);height:28px}
+#pg{min-width:120px;font-variant-numeric:tabular-nums}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 76px);transform:translateX(-50%);z-index:9;background:rgba(18,24,40,.97);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:14.5px;box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+#loading{position:fixed;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:radial-gradient(circle at 50% 40%,#13203a,#060912)}
+#loading .t{font-family:var(--display);font-weight:800;letter-spacing:.18em;font-size:22px}
+#loading .s{color:var(--muted);font-size:14px;max-width:80vw;text-align:center}
+#loading.gone{display:none}
+.edge{position:fixed;top:50%;z-index:4;transform:translateY(-50%);width:44px;height:88px;display:grid;place-items:center;color:rgba(255,255,255,.35);font-size:34px;pointer-events:none;transition:opacity .25s}
+.edge.l{left:4px}.edge.r{right:4px}
+body.hide .edge,html.scroll .edge{opacity:0}
+@media (max-width:700px){ select{max-width:150px} #quest{flex-basis:100%;order:3} #pg{min-width:90px} }
+</style>
+</head>
+<body>
+<div id="stage" aria-label="Book page"></div>
+<div id="roll" aria-label="Book pages"></div>
+<div class="edge l" aria-hidden="true">‹</div><div class="edge r" aria-hidden="true">›</div>
+<div id="top" class="bar">
+  <select id="book" aria-label="Book"></select>
+  <div id="quest"></div>
+  <div class="seg" role="group" aria-label="Reading mode"><button data-mode="page">📄 Pages</button><button data-mode="scroll">📜 Scroll</button></div>
+  <span id="link" title="When lit, clicking “Open the book” on your Mac's map turns this page"><i></i>Mac</span>
+  <a class="btn ghost" href="/" title="World map">🗺️</a>
+</div>
+<div id="bot" class="bar">
+  <button class="btn ghost" id="prev" aria-label="Previous page">‹</button>
+  <input id="slider" type="range" min="1" max="1" value="1" aria-label="Page">
+  <button class="btn ghost" id="next" aria-label="Next page">›</button>
+  <button class="btn ghost" id="pg" title="Go to page">…</button>
+</div>
+<div id="toast" role="status"></div>
+<div id="loading"><div class="t">QUEST READER</div><div class="s" id="load-s">opening the book…</div></div>
+
+<script>
+"use strict";
+const TOKEN = "__QUEST_TOKEN__";
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const R = {src:null, key:null, n:1, labels:null, sizes:null, tops:[], page:1, mode:"page",
+           st:null, seq:-1, focus:null, ticket:0, es:null, box:null, dpr:Math.min(window.devicePixelRatio || 1, 3)};
+let store = {};
+try { store = JSON.parse(localStorage.getItem("quest-reader") || "{}"); } catch (e) { store = {}; }
+let saveTimer;
+const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem("quest-reader", JSON.stringify(store)); } catch (e) {} }, 300); };
+// layout viewport: unlike innerWidth it doesn't change while you pinch-zoom
+const vw = () => document.documentElement.clientWidth, vh = () => document.documentElement.clientHeight;
+
+async function api(path, body){
+  const opt = body ? {method:"POST", headers:{"Content-Type":"application/json", "X-Quest-Token":TOKEN}, body:JSON.stringify(body)} : {};
+  const r = await fetch(path, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+let toastTimer;
+function toast(html){ const t = $("#toast"); t.innerHTML = html; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3200); }
+function loading(msg){ const l = $("#loading"); if (msg === false){ l.classList.add("gone"); return; } l.classList.remove("gone"); $("#load-s").textContent = msg; }
+function loadScript(src){
+  return new Promise((ok, bad) => {
+    if ([...document.scripts].some(s => s.src === src)) return ok();
+    const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = bad; document.head.appendChild(s);
+  });
+}
+
+/* quests on the current page */
+async function loadState(){ try { R.st = await api("/api/state"); } catch (e) {} }
+function questsFor(key){
+  if (!R.st) return [];
+  if (key === "main") return R.st.chapters.flatMap(c => c.reading);
+  const s = R.st.side.find(s => s.key === key);
+  return s ? s.chapters.flatMap(c => c.reading) : [];
+}
+function questAt(key, page){
+  const qs = questsFor(key).filter(q => q.pdf <= page && page <= q.pdf_end);
+  return qs.find(q => q.id === R.focus) || qs.find(q => !q.done) || qs[0] || null;
+}
+function updateQuest(){
+  const q = questAt(R.key, R.page), el = $("#quest");
+  if (!q){ el.innerHTML = `<span class="qp">No reading quest on this page</span>`; return; }
+  el.innerHTML = `<span class="qk">${esc(q.id)}</span><span class="qt">${esc(q.title)}</span><span class="qp">${esc(q.pages)}</span>` +
+    (q.done ? `<span class="ok">✓ read</span>` : `<button class="btn" id="markread" data-id="${esc(q.id)}">✓ Mark read +${q.xp}</button>`);
+}
+
+/* where pages come from: the Mac draws them natively (PDFKit) and sends images;
+   without that (not a Mac, or no swiftc) the iPad draws them itself with PDF.js */
+function nativeSource(info){
+  const key = info.key;
+  const url = (p, w, h) => `/page/${encodeURIComponent(key)}/${p}.jpg?w=${w}&h=${h}&v=${info.v}`;
+  return {
+    native:true, n:info.n, labels:info.labels, sizes:info.sizes, url,
+    async element(p, w, h){
+      const img = new Image(); img.decoding = "async"; img.alt = ""; img.draggable = false;
+      img.src = url(p, w, h);
+      await new Promise((ok, bad) => {
+        if (img.complete && img.naturalWidth) return ok();
+        img.onload = ok; img.onerror = () => bad(new Error("page didn't load"));
+      });
+      // decode ahead of time so the swap is instant, but never wait on it for long (it can stall off-screen)
+      if (img.decode) await Promise.race([img.decode().catch(() => {}), new Promise(r => setTimeout(r, 150))]);
+      return img;
+    },
+    close(){},
+  };
+}
+async function pdfjsSource(key, ticket){
+  loading("loading the PDF reader…");
+  await loadScript(PDFJS + "pdf.min.js");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js";
+  const task = pdfjsLib.getDocument({url:`/pdf/${encodeURIComponent(key)}.pdf`});
+  let opened = false;                              // the rest of the file keeps streaming in after the book opens
+  task.onProgress = ({loaded, total}) => { if (total && !opened && ticket === R.ticket) loading(`downloading ${Math.round(loaded / total * 100)}%`); };
+  const doc = await task.promise;
+  opened = true;
+  let labels = null;
+  try { labels = await doc.getPageLabels(); } catch (e) {}
+  const v1 = (await doc.getPage(1)).getViewport({scale:1});
+  return {
+    native:false, n:doc.numPages, labels, sizes:Array.from({length:doc.numPages}, () => [v1.width, v1.height]),
+    async element(p, w, h){
+      const page = await doc.getPage(p), base = page.getViewport({scale:1});
+      const vp = page.getViewport({scale:h ? Math.min(w / base.width, h / base.height) : w / base.width});
+      const c = document.createElement("canvas");
+      c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+      await page.render({canvasContext:c.getContext("2d"), viewport:vp}).promise;
+      return c;
+    },
+    close(){ try { doc.destroy(); } catch (e) {} },
+  };
+}
+
+/* the size (device pixels) pages are drawn at: the whole screen in page mode, the column width in scroll mode */
+const snap = x => Math.max(16, Math.floor(x / 8) * 8);
+const colWidth = () => Math.min(vw() - 16, 1400);
+function box(){
+  return R.mode === "scroll" ? {w:snap(colWidth() * R.dpr), h:0} : {w:snap((vw() - 12) * R.dpr), h:snap((vh() - 12) * R.dpr)};
+}
+const label = p => { const l = R.labels && R.labels[p - 1]; return l && l !== String(p) ? l : String(p); };
+
+async function openBook(key, page){
+  const ticket = ++R.ticket;                       // a newer request wins over one still loading
+  if (key !== R.key || !R.src){
+    loading("opening the book…");
+    let src;
+    try {
+      const info = await api(`/api/book?key=${encodeURIComponent(key)}`);
+      src = info.native ? nativeSource(info) : await pdfjsSource(key, ticket);
+    } catch (e){
+      if (ticket !== R.ticket) return;
+      if (key !== "main" && !R.src) return openBook("main");
+      loading(`Couldn't open this book: ${e.message}`); return;
+    }
+    if (ticket !== R.ticket){ src.close(); return; }
+    if (R.src) R.src.close();
+    sheets.clear();
+    Object.assign(R, {src, key, n:src.n, labels:src.labels, sizes:src.sizes});
+    $("#slider").max = R.n; $("#book").value = key;
+    if (R.mode === "scroll") buildRoll();
+    loading(false);
+  }
+  if (ticket !== R.ticket) return;
+  go(page || store["p:" + key] || 1);
+}
+function go(p, dir = ""){
+  if (!R.src) return;
+  R.page = Math.max(1, Math.min(R.n, Math.round(p) || 1));
+  showPos();
+  if (R.mode === "scroll"){
+    R.quiet = Date.now() + 800;                    // a jump shouldn't count as "scrolling down" and hide the bars
+    scrollTo({top:R.tops[R.page - 1] - 8, behavior:dir ? "smooth" : "auto"});
+    return;
+  }
+  showPage(dir);
+  for (const d of [1, 2, -1]) if (R.page + d >= 1 && R.page + d <= R.n) sheet(R.page + d).catch(() => {});
+}
+function showPos(){
+  const p = R.page;
+  $("#slider").value = p;
+  $("#pg").textContent = `p.${label(p)} · ${p}/${R.n}`;
+  updateQuest();
+  store["p:" + R.key] = p; store.book = R.key; save();
+}
+const next = () => { if (R.page < R.n) go(R.page + 1, "next"); };
+const prev = () => { if (R.page > 1) go(R.page - 1, "prev"); };
+
+/* page mode: decoded pages are kept ready, so turning is just swapping one element for another */
+const sheets = new Map();
+function sheet(p, b = box()){
+  const id = `${R.key}:${p}:${b.w}x${b.h}`;
+  if (sheets.has(id)){ const j = sheets.get(id); sheets.delete(id); sheets.set(id, j); return j; }
+  const job = R.src.element(p, b.w, b.h).then(el => {
+    el.className = "sheet";
+    el.style.width = (el.naturalWidth || el.width) / R.dpr + "px";
+    el.style.height = (el.naturalHeight || el.height) / R.dpr + "px";
+    return el;
+  });
+  sheets.set(id, job);
+  job.catch(() => sheets.delete(id));
+  while (sheets.size > 8) sheets.delete(sheets.keys().next().value);
+  return job;
+}
+async function showPage(dir){
+  const want = R.page, key = R.key;
+  let el;
+  try { el = await sheet(want); } catch (e){ return; }
+  if (want !== R.page || key !== R.key || R.mode !== "page") return;
+  el.classList.remove("in-next", "in-prev");
+  if (dir){ void el.offsetWidth; el.classList.add("in-" + dir); }
+  $("#stage").replaceChildren(el);
+}
+
+/* scroll mode: placeholders sized from the real page sizes, filled as they come within ~1.5 screens */
+let seenObs = null;
+function buildRoll(){
+  const roll = $("#roll"), W = colWidth();
+  if (seenObs) seenObs.disconnect();
+  seenObs = new IntersectionObserver(onSeen, {rootMargin:"150% 0px"});
+  const frag = document.createDocumentFragment();
+  R.sizes.forEach(([pw, ph], i) => {
+    const d = document.createElement("div");
+    d.className = "pg"; d.dataset.p = i + 1; d.dataset.label = label(i + 1);
+    d.style.width = W + "px"; d.style.height = Math.round(W * ph / pw) + "px";
+    frag.appendChild(d);
+  });
+  roll.replaceChildren(frag);
+  R.tops = Array.from(roll.children, d => d.offsetTop);
+  for (const d of roll.children) seenObs.observe(d);
+}
+function onSeen(entries){
+  for (const e of entries){
+    const d = e.target;
+    if (e.isIntersecting) fill(d);
+    else if (d.dataset.state){ d.replaceChildren(); d.dataset.state = ""; d.dataset.hi = ""; }
+  }
+}
+function fill(d){
+  if (d.dataset.state) return;
+  const p = +d.dataset.p, b = box(), key = R.key;
+  if (R.src.native){                                // a plain <img>: Safari fetches and decodes it natively
+    const img = new Image(); img.decoding = "async"; img.alt = ""; img.draggable = false;
+    img.src = R.src.url(p, b.w, 0);
+    d.replaceChildren(img); d.dataset.state = "on";
+    return;
+  }
+  d.dataset.state = "loading";
+  R.src.element(p, b.w, 0).then(el => {
+    if (d.dataset.state === "loading" && R.key === key && d.isConnected){ d.replaceChildren(el); d.dataset.state = "on"; }
+  }).catch(() => { d.dataset.state = ""; });
+}
+let ticking = false, lastY = 0;
+addEventListener("scroll", () => {
+  if (R.mode !== "scroll" || ticking) return;
+  ticking = true;
+  requestAnimationFrame(() => {
+    ticking = false;
+    const y = scrollY + vh() * 0.3;
+    let lo = 0, hi = R.tops.length - 1;
+    while (lo < hi){ const mid = (lo + hi + 1) >> 1; if (R.tops[mid] <= y) lo = mid; else hi = mid - 1; }
+    if (lo + 1 !== R.page){ R.page = lo + 1; showPos(); }
+    if (Date.now() < (R.quiet || 0)) lastY = scrollY;
+    else if (scrollY > lastY + 40){ document.body.classList.add("hide"); lastY = scrollY; }
+    else if (scrollY < lastY - 120){ document.body.classList.remove("hide"); lastY = scrollY; }
+  });
+}, {passive:true});
+
+function setMode(m){
+  R.mode = m; store.mode = m; save();
+  document.documentElement.classList.toggle("scroll", m === "scroll");
+  document.querySelectorAll(".seg [data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+  R.box = box();
+  connect();
+  if (!R.src) return;
+  if (m === "scroll"){ $("#stage").replaceChildren(); buildRoll(); }
+  else { if (seenObs) seenObs.disconnect(); $("#roll").replaceChildren(); R.tops = []; scrollTo(0, 0); }
+  go(R.page);
+}
+
+/* pinch-zoomed in: swap the pages on screen for ones drawn at twice the resolution */
+async function sharpen(){
+  if (!R.src || !window.visualViewport || visualViewport.scale < 1.4) return;
+  const b = box(), W = Math.min(4096, b.w * 2), H = b.h ? Math.min(4096, b.h * 2) : 0, key = R.key;
+  if (R.mode === "page"){
+    const cur = $("#stage").firstElementChild, p = R.page;
+    if (!cur || cur.dataset.hi) return;
+    try {
+      const el = await R.src.element(p, W, H);
+      if (p !== R.page || key !== R.key || cur.parentNode !== $("#stage")) return;
+      el.className = "sheet"; el.dataset.hi = "1"; el.style.width = cur.style.width; el.style.height = cur.style.height;
+      cur.replaceWith(el);
+    } catch (e) {}
+    return;
+  }
+  for (let p = Math.max(1, R.page - 1); p <= Math.min(R.n, R.page + 1); p++){
+    const d = $("#roll").children[p - 1];
+    if (!d || d.dataset.state !== "on" || d.dataset.hi) continue;
+    d.dataset.hi = "1";
+    R.src.element(p, W, H).then(el => { if (d.dataset.hi === "1" && R.key === key) d.replaceChildren(el); }).catch(() => { d.dataset.hi = ""; });
+  }
+}
+let zoomTimer;
+if (window.visualViewport) visualViewport.addEventListener("resize", () => { clearTimeout(zoomTimer); zoomTimer = setTimeout(sharpen, 250); });
+addEventListener("scroll", () => { if (window.visualViewport && visualViewport.scale >= 1.4){ clearTimeout(zoomTimer); zoomTimer = setTimeout(sharpen, 250); } }, {passive:true});
+
+/* input: page mode turns on swipes and edge taps; a tap in the middle (or anywhere in scroll mode) shows the bars */
+let down = null;
+document.addEventListener("pointerdown", e => { down = e.target.closest(".bar") ? null : {x:e.clientX, y:e.clientY, t:Date.now(), id:e.pointerId}; });
+document.addEventListener("pointercancel", () => { down = null; });
+document.addEventListener("pointerup", e => {
+  if (!down || e.pointerId !== down.id) return;
+  const dx = e.clientX - down.x, dy = e.clientY - down.y, dt = Date.now() - down.t;
+  down = null;
+  if (window.visualViewport && visualViewport.scale > 1.05) return;   // pinch-zoomed in: let the user pan
+  if (R.mode === "page" && Math.abs(dx) > 50 && Math.abs(dy) < 90 && dt < 600){ dx < 0 ? next() : prev(); return; }
+  if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && dt < 500){
+    const x = e.clientX / vw();
+    if (R.mode === "page" && x < .28) prev();
+    else if (R.mode === "page" && x > .72) next();
+    else { document.body.classList.toggle("hide"); lastY = scrollY; }
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("select,input")) return;
+  if (e.key === "ArrowRight" || (R.mode === "page" && ["PageDown", " "].includes(e.key))){ e.preventDefault(); next(); }
+  else if (e.key === "ArrowLeft" || (R.mode === "page" && e.key === "PageUp")){ e.preventDefault(); prev(); }
+});
+$("#next").onclick = next; $("#prev").onclick = prev;
+document.querySelectorAll(".seg [data-mode]").forEach(b => b.onclick = () => { if (b.dataset.mode !== R.mode) setMode(b.dataset.mode); });
+$("#slider").addEventListener("input", e => { $("#pg").textContent = `p.${label(+e.target.value)} · ${e.target.value}/${R.n}`; });
+$("#slider").addEventListener("change", e => go(+e.target.value));
+$("#pg").onclick = () => {
+  const v = prompt(`Go to page (printed page number, 1–${R.n} if unsure)`, label(R.page));
+  if (!v) return;
+  const idx = R.labels ? R.labels.indexOf(v.trim()) : -1;
+  go(idx >= 0 ? idx + 1 : +v);
+};
+$("#book").addEventListener("change", e => openBook(e.target.value));
+document.addEventListener("click", async e => {
+  const b = e.target.closest("#markread"); if (!b) return;
+  b.disabled = true;
+  const before = R.st ? R.st.player.xp : null, lvl = R.st ? R.st.player.level : null;
+  try {
+    const r = await api("/api/cmd", {args:["read", b.dataset.id]});
+    await loadState();
+    const gain = R.st && before !== null ? R.st.player.xp - before : 0;
+    if (r.code !== 0) toast("Couldn't mark it read");
+    else if (R.st && R.st.player.level > lvl) toast(`⭐ <b>Level ${R.st.player.level}</b> · ${esc(R.st.player.title)} · +${gain} XP`);
+    else toast(`✓ ${esc(b.dataset.id)} read${gain > 0 ? ` · <b style="color:var(--gold-2)">+${gain} XP</b>` : ""}`);
+  } catch (err){ toast("Couldn't reach your Mac: " + esc(err.message)); }
+  updateQuest();
+});
+let resizeTimer;
+addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const b = box();
+    if (R.box && b.w === R.box.w && b.h === R.box.h) return;   // e.g. Safari's toolbar sliding away
+    R.box = b; connect();
+    if (!R.src) return;
+    sheets.clear();
+    if (R.mode === "scroll"){ const p = R.page; buildRoll(); go(p); } else showPage();
+  }, 150);
+});
+
+/* live link to the Mac: "Open the book" there pushes the page here the moment you click */
+const link = on => $("#link").classList.toggle("on", on);
+function connect(){
+  if (R.es){ R.es.close(); R.es = null; }
+  if (document.hidden || !window.EventSource) return;
+  const b = R.box || box();
+  const es = R.es = new EventSource(`/api/events?w=${b.w}&h=${b.h}${R.seq >= 0 ? "&last=" + R.seq : ""}`);
+  es.addEventListener("open", () => link(true));
+  es.addEventListener("error", () => link(false));
+  es.addEventListener("hello", e => { const s = JSON.parse(e.data).seq; if (R.seq < 0) R.seq = s; link(true); });
+  es.addEventListener("nav", e => onNav(JSON.parse(e.data)));
+}
+async function onNav(n){
+  if (n.seq <= R.seq) return;
+  R.seq = n.seq;
+  api("/api/ack", {seq:n.seq}).catch(() => {});
+  R.focus = n.quest || null;
+  await openBook(n.key, n.page);
+  document.body.classList.remove("hide"); lastY = scrollY;
+  const q = questAt(n.key, n.page);
+  toast(`📲 From your Mac${q ? ` · <b>${esc(q.id)}</b> ${esc(q.title)}` : ""} · p.${esc(label(n.page))}`);
+  loadState().then(updateQuest);
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden){ if (R.es){ R.es.close(); R.es = null; } link(false); return; }
+  connect(); loadState().then(updateQuest);
+});
+addEventListener("pageshow", e => { if (e.persisted) connect(); });
+
+/* boot */
+(async () => {
+  R.mode = store.mode === "scroll" ? "scroll" : "page";
+  document.documentElement.classList.toggle("scroll", R.mode === "scroll");
+  document.querySelectorAll(".seg [data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === R.mode));
+  R.box = box();
+  connect();
+  const q = new URLSearchParams(location.search);
+  const key = q.get("book") || store.book || "main";
+  R.focus = q.get("quest");
+  const state = loadState().then(() => {
+    const books = (R.st && R.st.books) || [{key:"main", short:"C++ Crash Course"}];
+    $("#book").innerHTML = books.map(b => `<option value="${esc(b.key)}">${esc(b.short)}</option>`).join("");
+    $("#book").value = R.key || key;
+    updateQuest();
+  });
+  if (!R.ticket) await openBook(key, +q.get("page") || 0);
+  await state;
+  setTimeout(() => { document.body.classList.add("hide"); lastY = scrollY; }, 3500);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# build outputs from ./quest run / done / boss
+.build/
+*.dSYM/
+__pycache__/
+.quest/*.tmp
+.quest/pair.key
+.quest/.bin/
+.DS_Store
+
+# your copies of the books are copyrighted: never commit them
+*.pdf
