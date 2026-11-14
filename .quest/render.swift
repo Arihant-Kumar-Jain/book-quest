@@ -5,6 +5,8 @@
 //   R <tab> path <tab> page <tab> W <tab> H <tab> auto|preview|jpeg|png|heic [<tab> threads]
 //   B <tab> path <tab> W <tab> H <tab> page,page,… <tab> threads   -> per-stage timings as JSON (./quest bench)
 //   T <tab> strokes.json                         -> handwriting written with the Pencil, as text (Vision, on-device)
+//   X <tab> path <tab> first <tab> last          -> those pages as a PDF of their own (./quest add --ai)
+//   S <tab> path <tab> first <tab> last          -> the first 400 characters of each page's text, as JSON
 // Each reply is "OK <tab> length <tab> mime type" (or "ERR …"), a newline, then that many bytes.
 //
 // "auto" picks the smallest sharp encoding for each page. Text pages become 16-shade grayscale PNGs
@@ -248,6 +250,26 @@ func outline(_ d: PDFDocument) -> Data {
     return (try? JSONSerialization.data(withJSONObject: obj)) ?? Data("{}".utf8)
 }
 
+// --ai: pages first...last (1-based) as a PDF of their own, small enough to send to Claude.
+func excerpt(_ d: PDFDocument, _ first: Int, _ last: Int) -> Data {
+    let out = PDFDocument(), lo = max(0, first - 1)
+    for i in lo..<max(lo, min(d.pageCount, last)) {
+        if let p = d.page(at: i)?.copy() as? PDFPage { out.insert(p, at: out.pageCount) }
+    }
+    return out.dataRepresentation() ?? Data()
+}
+
+// --ai: the first 400 characters of each page's text, to find where printed page 1 falls in the PDF.
+func pageHeads(_ d: PDFDocument, _ first: Int, _ last: Int) -> Data {
+    var heads: [String] = []
+    let lo = max(0, first - 1)
+    for i in lo..<max(lo, min(d.pageCount, last)) {
+        let words = (d.page(at: i)?.string ?? "").split(whereSeparator: { $0.isWhitespace })
+        heads.append(String(words.joined(separator: " ").prefix(400)))
+    }
+    return (try? JSONSerialization.data(withJSONObject: heads)) ?? Data("[]".utf8)
+}
+
 // No outline: look for chapter openers in the page text. A chapter starts on a page whose first line is
 // "Chapter N" (or just the number N) followed by a title, and N must count up 1, 2, 3, so code listings
 // that happen to start with a number don't fool it. "Index" after the last chapter ends the book.
@@ -441,6 +463,10 @@ while let line = readLine(strippingNewline: true) {
     guard f.count >= 2, let d = open(f[1]) else { reply(false, Data("can't open that PDF".utf8)); continue }
     if f[0] == "I" { reply(true, info(d)); continue }
     if f[0] == "O" { reply(true, outline(d)); continue }
+    if f[0] == "X" || f[0] == "S", f.count >= 4, let a = Int(f[2]), let b = Int(f[3]) {
+        if f[0] == "X" { reply(true, excerpt(d, a, b), "application/pdf") } else { reply(true, pageHeads(d, a, b)) }
+        continue
+    }
     if f[0] == "B", f.count >= 6, let W = Int(f[2]), let H = Int(f[3]), let cores = Int(f[5]) {
         reply(true, bench(d, f[1], W, H, f[4].split(separator: ",").compactMap { Int($0) }, cores))
         continue

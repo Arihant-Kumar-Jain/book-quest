@@ -48,6 +48,29 @@ cp ~/Downloads/"Your Book.pdf" .        # any PDF you own; *.pdf is git-ignored
 Day to day: `./quest` shows where you are and what's next; `./quest start`, read, `./quest read`,
 `./quest stop "what clicked"`. `./quest help` lists everything.
 
+### How a book becomes a map
+
+`./quest add` reads the PDF's bookmarks, whatever they're called ("Chapter", "Lesson", "Kapitel"…). Parts are
+recognised by name or by chapter numbers that keep counting across them, and an outline wrapped in a single
+book-title entry is unwrapped. Without bookmarks it looks for chapter headings in the page text, and failing
+that splits the book into slices you can rename. `--dry-run` shows the result without saving it.
+
+For scanned books, PDFs without bookmarks, or anything it gets wrong, **`--ai`** has Claude read the printed
+contents pages instead. This is optional and off by default:
+
+```bash
+pip install anthropic                   # and pypdf, on Linux and Windows
+export ANTHROPIC_API_KEY=…              # from console.anthropic.com
+./quest add "Your Book.pdf" --ai --dry-run
+```
+
+It sends the first 40 pages (`--ai-pages N`) to the Claude API (Claude Opus 5.5; `--model` to change) and gets
+back each contents entry with its kind and printed page number, constrained to a JSON schema. Everything else
+is local: printed numbers are matched to PDF pages through the PDF's page labels or, when it has none, by
+finding the page each title opens (a title near the top of a page but not of the two before it, which skips
+running heads). `--offset N` sets the shift by hand. The answer is cached in `.quest/.cache/ai`, so running
+again after `--dry-run` sends nothing.
+
 ## ✨ What you get
 
 | | |
@@ -203,7 +226,7 @@ The server runs on your machine. With `--ipad` it also listens on your local net
 | Clickjacking, MIME sniffing, referrer leaks | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy: same-origin`. |
 | Oversized or malformed input | Bodies over 32 MB are refused unread; ink strokes, page numbers and book keys are validated; at most 16 live connections. |
 | Running arbitrary commands | The map can only run an allow-list of `./quest` subcommands with validated arguments; opening files in your editor and showing the QR code are Mac-only. |
-| Your books and notes | `*.pdf` and your ink are git-ignored, and nothing is uploaded. The iPad app on a Mac loads nothing from the internet. |
+| Your books and notes | `*.pdf` and your ink are git-ignored. Nothing is uploaded unless you run `./quest add --ai`, which sends the book's first pages to the Claude API and says so as it does; the API key is read by the Anthropic SDK from your environment and never stored. The iPad app on a Mac loads nothing from the internet. |
 | A changed file on a CDN | The map's fonts come from Google Fonts and its QR code library from cdnjs; the PDF.js fallback also comes from cdnjs. Each script is pinned to a version and a `sha384` [Subresource Integrity](https://developer.mozilla.org/docs/Web/Security/Subresource_Integrity) hash, so a modified file is refused before it runs, and a test fails if a hash goes missing. |
 
 Traffic on your network is plain HTTP; use a network you trust (a phone hotspot works when campus Wi-Fi
@@ -215,11 +238,14 @@ blocks devices from seeing each other).
 python3 -m unittest discover -s tests -v
 ```
 
-25 tests. The unit tests cover the importer's rules (titles, parts, front matter, appendices, quest sizes,
-bosses), stroke validation, the quantizer constant and the integrity hashes on CDN scripts. The end-to-end tests write a PDF with a table of
-contents, import it with `./quest add`, start the real server and check that pages come back as valid 4-bit
-PNGs (parsed by hand: chunk CRCs, inflated size), that ink and notes round-trip (including a stale-write
-conflict), and that the security rules above hold. CI runs them on macOS and Linux on every push.
+41 tests. The unit tests cover the importer's rules (titles, parts named in five languages or found by chapter
+numbers, single-root outlines, front matter, appendices, quest sizes, bosses), the `--ai` request and its strict
+schema, page placement through labels and through page text with running heads, stroke validation, the quantizer
+constant and the integrity hashes on CDN scripts. The end-to-end tests write a PDF with a table of contents,
+import it with `./quest add` (and with `--ai`, against a stand-in for the SDK that logs the request), start the
+real server and check that pages come back as valid 4-bit PNGs (parsed by hand: chunk CRCs, inflated size), that
+ink and notes round-trip (including a stale-write conflict), and that the security rules above hold. CI runs
+them on macOS and Linux on every push.
 
 `./quest bench` measures everything in [Performance](#-performance) and writes `bench/RESULTS.md`.
 
@@ -228,6 +254,8 @@ conflict), and that the security rules above hold. CI runs them on macOS and Lin
 ```mermaid
 flowchart LR
   PDF["your PDF"] -->|"./quest add (PDFKit outline)"| BOOK[(".quest/book.json")]
+  PDF -.->|"--ai: contents pages"| CLAUDE["Claude API (optional)"]
+  CLAUDE -.->|"entries + printed pages"| BOOK
   CLI["./quest CLI"] -->|appends events| SAVE[(".quest/save.json")]
   BOOK --> CLI
   SAVE -->|replayed into XP, levels, streaks, badges| CLI
@@ -244,7 +272,8 @@ flowchart LR
   commands the terminal does.
 - **No dependencies.** The CLI and server are one Python file using only the standard library; the pages are
   plain HTML, SVG and JavaScript. On a Mac, `.quest/render.swift` and `.quest/render_fast.h` are compiled once
-  with `swiftc -O` into `.quest/.bin/quest-render`, which links only Apple frameworks and the system zlib.
+  with `swiftc -O` into `.quest/.bin/quest-render`, which links only Apple frameworks and the system zlib. The
+  optional `--ai` import is the one feature that needs a package (`anthropic`), imported only when you use it.
 
 ## 🛠️ Configuration
 
@@ -284,8 +313,11 @@ book-quest/
 ## 🚧 Limits
 
 - **Linux and Windows** run everything except the PDFKit parts: `./quest add` can't read the outline there (it
-  splits the book into equal slices you can rename in `book.json`), and the iPad app falls back to PDF.js, which
-  needs internet the first time. On Windows, run `python quest …`.
+  splits the book into equal slices you can rename in `book.json`, or use `--ai` with `pypdf`), and the iPad
+  app falls back to PDF.js, which needs internet the first time. On Windows, run `python quest …`.
+- **`--ai`** needs a network connection and an Anthropic API key, and the request is billed to that key (the
+  command prints the tokens it used). It reads the contents from the first 40 pages; if they run longer, it
+  says so and `--ai-pages` sends more.
 - **Handwriting recognition** is Vision's; it is good with clear writing and can misread acronyms.
 - **Pencil Pro gestures** (squeeze, double tap, barrel roll) need a native app; Safari doesn't expose them.
 

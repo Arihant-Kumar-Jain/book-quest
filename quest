@@ -1859,13 +1859,21 @@ SKIP_RE = re.compile(
     r"^table of contents|^dedication|^acknowledg|^about the (author|technical|contributor|reviewer)|^index$|"
     r"^colophon|^praise for|^also (by|available)|^updates$|^support the |^more (smart )?books|^list of (figures|tables|"
     r"illustrations|listings)|^bibliography|^references$|^endnotes$|^notes$|^glossary$|^other books|^about this e-?book|"
-    r"^epigraph|electronic frontier foundation|^the end$", re.I)
+    r"^epigraph|electronic frontier foundation|^the end$|"
+    # the same in German, French, Spanish, Italian and Portuguese
+    r"^inhalt(sverzeichnis)?$|^table des mati[eè]res$|^sommaire$|^[ií]ndice$|^sommario$|^contenidos?$|^conte[uú]dos?$|"
+    r"^stichwortverzeichnis$|^(sach)?register$|^literatur(verzeichnis)?$|^bibliographie$|^bibliograf[ií]a$|^glossa(r|ire|rio)$|"
+    r"^glosario$|^danksagung|^remerciements|^agradecim|^ringraziamenti|^impressum$", re.I)
 OPTIONAL_RE = re.compile(
     r"^(foreword|preface|from the preface|introduction$|intro$|prologue|(an )?overture|epilogue|afterword|postface|"
-    r"appendix|conclusions?$|closing thoughts|a note |how to (use|read) this book|before you (begin|start)|postscript)", re.I)
+    r"appendix|conclusions?$|closing thoughts|a note |how to (use|read) this book|before you (begin|start)|postscript|"
+    r"vorwort|geleitwort|einleitung$|einf[uü]hrung$|nachwort|anhang|pr[eé]face|avant-propos|annexe|[eé]pilogue|"
+    r"prefacio|pr[oó]logo|introducci[oó]n$|ap[eé]ndice|ep[ií]logo|prefazione|introduzione$|appendice|pref[aá]cio|"
+    r"introdu[cç][aã]o$|ap[eê]ndice)", re.I)
 APPENDIX_RE = re.compile(r"^(?:(?i:appendix)\s+[A-Za-z0-9]+\b\s*[.:)\-—–]?|[A-Z]\d?\.|[A-Z]\d\s*[:)\-—–])\s*(\S.*)$")
-PART_RE = re.compile(r"^(part|book|section|unit)\s+([ivxlcdm]+|\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b"
-                     r"[\s:.\-—–]*(.*)$", re.I)
+CHAPTER_WORDS = r"chapter|topic|lesson|module|unit|lecture|kapitel|chapitre|cap[ií]tulo|capitolo|hoofdstuk"
+PART_RE = re.compile(r"^(part|book|section|unit|teil|partie|parte|deel)\s+([ivxlcdm]+|\d+|one|two|three|four|five|six|"
+                     r"seven|eight|nine|ten)\b[\s:.\-—–]*(.*)$", re.I)
 SMALL_WORDS = {"a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into", "of", "on", "or", "the", "to",
                "vs", "via", "with", "is", "it", "its"}
 COMMON3 = {"the", "and", "for", "you", "how", "why", "what", "use", "get", "set", "new", "one", "two", "can", "not", "all",
@@ -1910,11 +1918,11 @@ def strip_number(t):
     m = APPENDIX_RE.match(t)
     if m:
         return m.group(1)
-    m = re.match(r"^(chapter|ch\.|topic|lesson|module|unit|lecture)?\s*(\d+|[ivxlc]+)\s*[:.\-—–)]\s*(\S.*)$", t, re.I)
+    m = re.match(rf"^(ch\.|{CHAPTER_WORDS})?\s*(\d+|[ivxlc]+)\s*[:.\-—–)]\s*(\S.*)$", t, re.I)
     if m and (m.group(1) or m.group(2).isdigit()):
         return m.group(3)
-    m = re.match(r"^(chapter|topic|lesson|module|unit|lecture)\s+(\d+|[ivxlc]+|one|two|three|four|five|six|seven|eight|"
-                 r"nine|ten)\b[\s:.\-—–]*(\S.*)?$", t, re.I)
+    m = re.match(rf"^({CHAPTER_WORDS})\s+(\d+|[ivxlc]+|one|two|three|four|five|six|seven|eight|nine|ten)\b"
+                 r"[\s:.\-—–]*(\S.*)?$", t, re.I)
     if m:
         return m.group(3) or t
     return t
@@ -1958,9 +1966,9 @@ def title_from_filename(name):
     return re.sub(r"\s+", " ", t).strip() or "My Book"
 
 
-def read_pdf_meta(pdf):
+def read_pdf_meta(pdf, renderer=None):
     """Page count, page labels and table of contents, read natively with PDFKit when possible."""
-    renderer = PageRenderer(workers=1)
+    renderer = renderer or PageRenderer(workers=1)
     if not RENDER_BIN.exists() and sys.platform == "darwin":
         print(DIM("  Building the PDF helper (one time, a few seconds)…"))
     if renderer.available():
@@ -1980,24 +1988,85 @@ def label_of(meta, p):
     return labels[p - 1] if labels and 0 < p <= len(labels) and labels[p - 1] else str(p)
 
 
+def is_skippable(t):
+    return bool(SKIP_RE.search(t) or SKIP_RE.search(strip_number(t)))
+
+
+def chapter_number(t):
+    """'Kapitel 3: Mehr' / '3 Types' / '第3章' → 3. Section numbers such as '3.1' → None."""
+    m = re.search(r"\d+(?:\.\d+)*", t)
+    return int(m.group(0)) if m and m.start() <= 20 and "." not in m.group(0) else None
+
+
+def children(rows, i):
+    """Indices of the outline entries directly under rows[i]."""
+    out = []
+    for j in range(i + 1, len(rows)):
+        if rows[j][0] <= rows[i][0]:
+            break
+        if rows[j][0] == rows[i][0] + 1:
+            out.append(j)
+    return out
+
+
+def unwrap_root(rows):
+    """Some PDFs hang the whole outline under one entry, usually the book's title: step inside it."""
+    for _ in range(3):
+        top = min(r[0] for r in rows)
+        heads = [i for i, r in enumerate(rows) if r[0] == top and not is_skippable(r[2])]
+        if len(heads) != 1 or len(children(rows, heads[0])) < 2:
+            break
+        i = heads[0]
+        end = next((j for j in range(i + 1, len(rows)) if rows[j][0] <= top), len(rows))
+        rows = rows[:i] + [(r[0] - 1,) + r[1:] for r in rows[i + 1:end]] + rows[end:]
+    return rows
+
+
+def find_parts(rows, top):
+    """Indices of the top-level entries that group chapters into parts, judged by their names or, in any
+    language, by chapter numbers that keep counting from one entry to the next (Teil I: 1, 2 · Teil II: 3, 4)."""
+    if any(r[3] for r in rows):                                   # labelled by Claude (--ai)
+        return {i for i, r in enumerate(rows) if r[3] == "part"}
+    named = {i for i, r in enumerate(rows) if r[0] == top and PART_RE.match(r[2])}
+    if len(named) >= 2:
+        return named
+    groups = []
+    for i, r in enumerate(rows):
+        if r[0] == top:
+            nums = [x for x in (chapter_number(rows[j][2]) for j in children(rows, i)) if x is not None]
+            if len(nums) >= 2:
+                groups.append((i, nums))
+    seq = [x for _, nums in groups for x in nums]
+    if len(groups) >= 2 and seq[0] <= 1 and all(b == a + 1 for a, b in zip(seq, seq[1:])):
+        return {i for i, _ in groups}
+    return set()
+
+
+def part_name(t):
+    m = PART_RE.match(t)
+    return tidy_caps((m.group(3) if m else re.sub(r"^\S+\s+([ivxlcdm]+|\d+)\b[\s:.\-—–]*", "", t, flags=re.I)).strip())
+
+
 def plan_units(meta):
-    """Group the outline into units (front matter, chapters, appendices) with their sections."""
+    """Group the outline into units (front matter, chapters, appendices) with their sections. Outline rows are
+    [depth, pdf page, title] or, from --ai, [depth, pdf page, title, kind]."""
     n = meta["n"]
-    rows = [(d, p, clean_title(t)) for d, p, t in meta.get("outline", []) if 1 <= p <= n and clean_title(t)]
+    rows = [(r[0], r[1], clean_title(r[2]), r[3] if len(r) > 3 else None)
+            for r in meta.get("outline", []) if 1 <= r[1] <= n and clean_title(r[2])]
     if not rows:
         return [], {}
-    top = min(d for d, _, _ in rows)
-    parts_at_top = [r for r in rows if r[0] == top and PART_RE.match(r[2])]
-    use_parts = len(parts_at_top) >= 2
+    if not any(r[3] for r in rows):
+        rows = unwrap_root(rows)
+    top = min(r[0] for r in rows)
+    part_rows = find_parts(rows, top)
+    use_parts = bool(part_rows)
     units, bounds, part, part_names = [], [], 0, {}
-    nested = {i for i, r in enumerate(rows) if r[0] == top and use_parts and PART_RE.match(r[2])
-              and i + 1 < len(rows) and rows[i + 1][0] == top + 1}
+    nested = {i for i in part_rows if i + 1 < len(rows) and rows[i + 1][0] == top + 1}
     in_part_depth = None
-    for i, (d, pg, t) in enumerate(rows):
-        if d == top and use_parts and PART_RE.match(t):
+    for i, (d, pg, t, label) in enumerate(rows):
+        if i in part_rows:
             part += 1
-            m = PART_RE.match(t)
-            part_names[part] = tidy_caps(m.group(3).strip()) or f"Part {roman(part)}"
+            part_names[part] = part_name(t) or f"Part {roman(part)}"
             bounds.append(pg)
             in_part_depth = top + 1 if i in nested else None
             continue
@@ -2007,13 +2076,8 @@ def plan_units(meta):
             unit_depth = top
         if unit_depth is None or d != unit_depth:
             continue
-        secs = []
-        for d2, pg2, t2 in rows[i + 1:]:
-            if d2 <= d:
-                break
-            if d2 == d + 1:
-                secs.append((pg2, t2))
-        kind = "skip" if SKIP_RE.search(t) or SKIP_RE.search(strip_number(t)) else \
+        secs = [(rows[j][1], rows[j][2]) for j in children(rows, i)]
+        kind = label if label in ("chapter", "optional", "skip") else "skip" if is_skippable(t) else \
             "optional" if OPTIONAL_RE.match(strip_number(t)) or APPENDIX_RE.match(t) else "chapter"
         units.append({"title": t, "page": pg, "sections": secs, "kind": kind, "part": part if use_parts else 1})
         bounds.append(pg)
@@ -2134,12 +2198,291 @@ def side_key(short, taken):
     return key
 
 
+# ───────────────────────────── add --ai: Claude reads the table of contents ─────────────────────────────
+# Off by default. With --ai, the first pages of the PDF (where the contents are) go to the Claude API, which
+# returns every contents entry with its printed page number. That works for any language and any wording, for
+# PDFs without bookmarks and for scanned books. Printed page numbers are then matched to PDF pages locally.
+AI_MODEL = "claude-opus-5-5"
+AI_PAGES = 40                                    # the contents are almost always within the first 40 pages
+AI_CACHE = QDIR / ".cache" / "ai"                # Claude's answers, so a re-run (after --dry-run, say) is free
+AI_FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1", "claude-fable-5-2"}
+AI_KINDS = ("part", "chapter", "section", "optional", "skip")
+AI_PROMPT = """These are the first pages of a book. Find its table of contents and list every entry in order, \
+down to one level below the chapters. If the book has both a short and a detailed contents, use the detailed one.
+
+For each entry:
+- title: as printed, without the page number or dot leaders. Keep chapter numbers.
+- page: the page number printed next to it in the contents, exactly as printed ("xv", "23"); "" if there is none.
+- kind: "part" for a group of chapters (Part I, Teil 2, Book One); "chapter" for a main chapter; "section" for a \
+heading inside the entry above it; "optional" for material around the chapters that is worth reading but not core \
+(foreword, preface, introduction, appendix, epilogue); "skip" for everything else (cover, copyright, contents, \
+dedication, acknowledgments, about the author, index, bibliography, glossary).
+
+Also give the book's title and author as printed on its title page ("" if absent). Set found_contents to false if \
+these pages hold no table of contents, and complete to false if the contents continue past the last page given."""
+AI_SCHEMA = {
+    "type": "object", "additionalProperties": False,
+    "required": ["title", "author", "found_contents", "complete", "entries"],
+    "properties": {
+        "title": {"type": "string"}, "author": {"type": "string"},
+        "found_contents": {"type": "boolean"}, "complete": {"type": "boolean"},
+        "entries": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["kind", "title", "page"],
+            "properties": {"kind": {"type": "string", "enum": list(AI_KINDS)}, "title": {"type": "string"},
+                           "page": {"type": "string"}}}}}}
+
+
+class PdfPages:
+    """What --ai needs from the PDF: its first pages as a PDF, page labels and page text. From the native
+    helper on a Mac, from pypdf elsewhere."""
+
+    def __init__(self, pdf, renderer):
+        self.pdf, self.native, self.reader, self.texts = pdf, renderer, None, {}
+        if not renderer.available(wait=300):
+            self.native = None
+            try:
+                from pypdf import PdfReader
+            except ImportError:
+                die("On this computer --ai also needs pypdf to read the PDF: pip install pypdf")
+            import logging
+            logging.getLogger("pypdf").setLevel(logging.ERROR)     # it warns about every font it can't decode
+            self.reader = PdfReader(str(pdf))
+        elif "\t" in str(pdf) or "\n" in str(pdf):
+            die("Rename the PDF first: its name contains a tab or a line break.")
+
+    def count(self):
+        return len(self.reader.pages) if self.reader else None
+
+    def first(self, k):
+        if self.native:
+            return self.native._call(f"X\t{self.pdf}\t1\t{k}")[0]
+        import io
+        from pypdf import PdfWriter
+        w, buf = PdfWriter(), io.BytesIO()
+        for page in self.reader.pages[:k]:
+            w.add_page(page)
+        w.write(buf)
+        return buf.getvalue()
+
+    def heads(self, a, b):
+        """The first 400 characters of the text of pages a..b, each read once."""
+        need = [p for p in range(a, b + 1) if p not in self.texts]
+        if need:
+            lo, hi = need[0], need[-1]
+            if self.native:
+                got = json.loads(self.native._call(f"S\t{self.pdf}\t{lo}\t{hi}")[0])
+            else:
+                got = [" ".join((p.extract_text() or "").split())[:400] for p in self.reader.pages[lo - 1:hi]]
+            for p, h in enumerate(got, lo):
+                self.texts.setdefault(p, h)
+        return [self.texts.get(p, "") for p in range(a, b + 1)]
+
+    def labels(self):
+        return self.native.info(self.pdf)["labels"] if self.native else list(self.reader.page_labels)
+
+
+def ai_request(pdf_bytes, model):
+    """The Messages API request: the pages as a PDF document, the instructions, and a JSON schema the answer
+    must follow."""
+    import base64
+    params = {"model": model, "max_tokens": 64000,
+              "output_config": {"effort": "medium", "format": {"type": "json_schema", "schema": AI_SCHEMA}},
+              "messages": [{"role": "user", "content": [
+                  {"type": "document", "source": {"type": "base64", "media_type": "application/pdf",
+                                                  "data": base64.standard_b64encode(pdf_bytes).decode("ascii")}},
+                  {"type": "text", "text": AI_PROMPT}]}]}
+    if model in AI_FALLBACK_MODELS:              # if the model declines, the API retries on another in the same call
+        params.update(betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+    return params
+
+
+def ai_sdk():
+    try:
+        import anthropic
+    except ImportError:
+        die("--ai needs Anthropic's Python SDK: pip install anthropic")
+    return anthropic
+
+
+def ai_ask(params):
+    """Send the request (streamed, since the answer can be long) → (answer dict, tokens in, tokens out)."""
+    anthropic = ai_sdk()
+    try:
+        with anthropic.Anthropic().beta.messages.stream(**params) as stream:
+            msg = stream.get_final_message()
+    except anthropic.AuthenticationError:
+        die("The Claude API didn't accept your key. Check ANTHROPIC_API_KEY.")
+    except anthropic.APIStatusError as e:
+        die(f"The Claude API answered {e.status_code}: {e.message}")
+    except anthropic.APIConnectionError:
+        die("Couldn't reach the Claude API. Check your internet connection.")
+    except anthropic.AnthropicError as e:
+        die(f"Couldn't call the Claude API ({e}). Set ANTHROPIC_API_KEY to an API key from console.anthropic.com.")
+    except TypeError as e:                       # the SDK's "no credentials", or an SDK too old for these options
+        if "authentication" in str(e).lower():
+            die("No Claude API key found. Set ANTHROPIC_API_KEY to a key from console.anthropic.com.")
+        die(f"Your anthropic package is too old for this ({e}): pip install -U anthropic")
+    if msg.stop_reason == "refusal":
+        die("Claude declined to read these pages.")
+    if msg.stop_reason == "max_tokens":
+        die("Claude's answer was cut off. Run the command again.")
+    try:
+        answer = json.loads(next(b.text for b in msg.content if b.type == "text"))
+    except (StopIteration, ValueError):
+        die("Claude's answer wasn't the JSON asked for. Run the command again.")
+    return answer, msg.usage.input_tokens, msg.usage.output_tokens
+
+
+def printed_page(s):
+    """'23' → ('a', 23), 'xv' → ('r', 15), anything else → None."""
+    s = s.strip().lower()
+    if s.isdigit():
+        return "a", int(s)
+    if s and re.fullmatch(r"m{0,3}(cm|cd|d?c{0,3})(xc|xl|l?x{0,3})(ix|iv|v?i{0,3})", s):
+        vals = [{"i": 1, "v": 5, "x": 10, "l": 50, "c": 100, "d": 500, "m": 1000}[c] for c in s]
+        return "r", sum(-v if i + 1 < len(vals) and v < vals[i + 1] else v for i, v in enumerate(vals))
+    return None
+
+
+def squash(t):
+    """Lowercase letters and digits only, so 'U P  A N D  R U N N I N G' (letter-spaced headings) still matches."""
+    return re.sub(r"[\W_]+", "", t.lower())
+
+
+def find_offset(entries, n, heads, system="a", contents_until=0):
+    """PDF page = printed page + offset, for arabic ("a") or roman ("r") page numbers.
+
+    A title "opens" a page when it is near the top of that page's text but not of the two pages before it:
+    that tells a chapter's first page from the running heads that repeat its title later on. Candidate offsets
+    come from where the first few titles open pages; the winner opens the most pages for a spread of titles.
+    Contents pages (within the first contents_until pages, naming three or more titles) never count."""
+    marks = []
+    for e in entries:
+        p, t = printed_page(e["page"]), squash(strip_number(e["title"]))[:24]
+        if p and p[0] == system and e["kind"] != "section" and len(t) >= 4:
+            marks.append((p[1], t))
+    if not marks:
+        return None
+    titles = {t for t in (squash(strip_number(e["title"]))[:24] for e in entries) if len(t) >= 4}
+    seen = {}
+
+    def page(pg):                                    # → (start of the page's text, names 3+ titles?)
+        if pg not in seen:
+            s = squash(heads(pg, pg)[0]) if 1 <= pg <= n else ""
+            seen[pg] = (s[:200], sum(t in s for t in titles) >= 3)
+        return seen[pg]
+
+    def opens(pg, t):
+        s, busy = page(pg)
+        if t not in s or (busy and pg <= contents_until):
+            return False
+        return not any(t in page(b)[0] and not page(b)[1] for b in (pg - 1, pg - 2))
+    first = marks[:3]
+    hi = min(n, max(p for p, _ in first) + 100)       # allows up to 100 pages before printed page 1
+    heads(1, hi)
+    votes = defaultdict(int)
+    for p, t in first:
+        for pg in range(1, hi + 1):
+            if opens(pg, t):
+                votes[pg - p] += 1
+    sample = marks[::max(1, len(marks) // 12)][:12]
+    best, score = None, 0
+    for off in sorted(sorted(votes, key=lambda o: -votes[o])[:8]):
+        s = sum(opens(p + off, t) for p, t in sample)
+        if s > score:
+            best, score = off, s
+    return best if score >= max(1, len(sample) // 2) else None
+
+
+def place_entries(entries, n, labels, heads, offset=None, contents_until=0):
+    """Printed page numbers from the contents → PDF pages: through the PDF's page labels when it has real ones,
+    else from where titles open pages in the text (--offset overrides that for arabic numbers).
+    → ([page or None per entry], how) or (None, None)."""
+    printed = [printed_page(e["page"]) for e in entries]
+    if labels and any(lab != str(i) for i, lab in enumerate(labels, 1)):     # PDFKit falls back to 1, 2, 3…
+        where = {}
+        for i, lab in enumerate(labels, 1):
+            where.setdefault(lab.strip().lower(), i)
+        got = [where.get(e["page"].strip().lower()) if p else None for e, p in zip(entries, printed)]
+        if sum(g is not None for g in got) >= 0.6 * max(1, sum(p is not None for p in printed)):
+            return got, "the PDF's page labels"
+    offs = {"a": offset if offset is not None else find_offset(entries, n, heads, "a", contents_until),
+            "r": find_offset(entries, n, heads, "r", contents_until)}
+    if offs["a"] is None:
+        return None, None
+    how = f"--offset {offset}" if offset is not None else "chapter titles in the page text"
+    return ([p[1] + offs[p[0]] if p and offs[p[0]] is not None else None for p in printed],
+            f"{how} (printed page 1 is PDF page {1 + offs['a']})")
+
+
+def ai_outline(entries, pages, n):
+    """Claude's flat list → outline rows [depth, pdf page, title, kind] for plan_units. Chapters right after a
+    part sit inside it; sections hang under the entry above them. Entries that would run backwards are dropped."""
+    rows, unit_depth, in_part = [], None, False
+    for e, pg in zip(entries, pages):
+        if not pg or not 1 <= pg <= n or (rows and pg < rows[-1][1]):
+            continue
+        kind = e["kind"]
+        if kind == "section":
+            if unit_depth is not None:
+                rows.append([unit_depth + 1, pg, e["title"], None])
+            continue
+        depth = 1 if kind == "chapter" and in_part else 0
+        rows.append([depth, pg, e["title"], kind])
+        in_part = kind == "part" or (in_part and kind == "chapter")
+        unit_depth = None if kind == "part" else depth
+    return rows
+
+
+def ai_contents(pdf, meta, renderer, pages, model, offset):
+    """--ai: fill meta's outline, title and author from Claude's reading of the contents pages."""
+    src = PdfPages(pdf, renderer)
+    if src.count():
+        meta["n"] = src.count()
+    k = min(pages, meta["n"])
+    key = hashlib.sha256(f"{pdf.name}|{PageRenderer.version(pdf)}|{k}|{model}|{AI_PROMPT}".encode()).hexdigest()[:24]
+    cached = AI_CACHE / f"{key}.json"
+    if cached.exists():
+        answer = json.loads(cached.read_text(encoding="utf-8"))
+        print(DIM(f"  🤖 Using Claude's earlier reading of the contents (delete {rel(AI_CACHE)} to ask again)."))
+    else:
+        ai_sdk()
+        excerpt = src.first(k)
+        if len(excerpt) > 22 << 20:                       # base64 adds a third; requests stop at 32 MB
+            die(f"The first {k} pages are {len(excerpt) >> 20} MB, too big to send. Try fewer: --ai-pages 20")
+        print(f"  🤖 Sending pages 1–{k} ({len(excerpt) / 1e6:.1f} MB) to the Claude API ({model}) "
+              f"to read the table of contents…")
+        answer, t_in, t_out = ai_ask(ai_request(excerpt, model))
+        print(DIM(f"     {fmt(t_in)} tokens in, {fmt(t_out)} out."))
+        AI_CACHE.mkdir(parents=True, exist_ok=True)
+        cached.write_text(json.dumps(answer, ensure_ascii=False, indent=1), encoding="utf-8")
+    entries = [e for e in answer.get("entries", []) if isinstance(e, dict) and e.get("kind") in AI_KINDS
+               and isinstance(e.get("title"), str) and e["title"].strip() and isinstance(e.get("page"), str)]
+    if not answer.get("found_contents") or not entries:
+        die(f"Claude found no table of contents in the first {k} pages. Try more: --ai-pages 80")
+    if not answer.get("complete", True):
+        print(YEL(f"     The contents seem to go on past page {k}. If chapters are missing: --ai-pages {k * 2}"))
+    labels = src.labels()
+    placed, how = place_entries(entries, meta["n"], labels, src.heads, offset, contents_until=k)
+    if not placed:
+        die("Couldn't tell which PDF page is printed page 1. Find it in the PDF and run again with "
+            "--offset <that PDF page number minus 1>. Claude's answer is saved, so this costs nothing.")
+    rows = ai_outline(entries, placed, meta["n"])
+    if not any(r[3] in ("chapter", "optional") for r in rows):
+        die("Claude's contents didn't match this PDF's pages. Try --offset <PDF page of printed page 1, minus 1>.")
+    meta.update(outline=rows, guessed=False, title=answer.get("title") or meta.get("title") or "",
+                author=answer.get("author") or meta.get("author") or "")
+    if labels and any(lab != str(i) for i, lab in enumerate(labels, 1)):
+        meta["labels"] = labels
+    print(DIM(f"     Placed {sum(1 for r in rows if r[3])} contents entries using {how}."))
+
+
 def cmd_add(args):
-    flags = {a for a in args if a in ("--side", "--dry-run")}
+    flags = {a for a in args if a in ("--side", "--dry-run", "--ai")}
     opts, rest, i = {}, [], 0
     while i < len(args):
         a = args[i]
-        if a in ("--title", "--short", "--key", "--pages") and i + 1 < len(args):
+        if a in ("--title", "--short", "--key", "--pages", "--ai-pages", "--offset", "--model") and i + 1 < len(args):
             opts[a[2:]] = args[i + 1]
             i += 2
             continue
@@ -2147,16 +2490,26 @@ def cmd_add(args):
             rest.append(a)
         i += 1
     if len(rest) != 1:
-        die('Usage: ./quest add <book.pdf> [--side] [--title "Full Title"] [--short "Short Name"] [--dry-run]')
+        die('Usage: ./quest add <book.pdf> [--side] [--title "Full Title"] [--short "Short Name"] [--dry-run]\n'
+            '         [--ai [--ai-pages 40] [--offset N] [--model claude-opus-5-5]]')
     pdf = Path(os.path.abspath(Path(rest[0]).expanduser()))
     if not pdf.is_file() or pdf.suffix.lower() != ".pdf":
         die(f"Can't find a PDF at {rest[0]}.")
+    for name in ("pages", "ai-pages", "offset"):
+        if name in opts and not re.fullmatch(r"-?\d+", opts[name]):
+            die(f"--{name} takes a whole number.")
+    if ({"ai-pages", "offset", "model"} & set(opts)) and "--ai" not in flags:
+        die("--ai-pages, --offset and --model go with --ai.")
     existing = json.loads(BOOK_FILE.read_text(encoding="utf-8")) if BOOK_FILE.exists() else None
     as_side = existing is not None
     if "--side" in flags and not existing:
         die("Add your main book first (without --side). Side books are optional extras next to it.")
     print(f"\n  📖 Reading {B(pdf.name)}…")
-    meta = read_pdf_meta(pdf)
+    renderer = PageRenderer(workers=1)
+    meta = read_pdf_meta(pdf, renderer)
+    if "--ai" in flags:
+        ai_contents(pdf, meta, renderer, max(1, int(opts.get("ai-pages", AI_PAGES))), opts.get("model", AI_MODEL),
+                    int(opts["offset"]) if "offset" in opts else None)
     if opts.get("pages"):
         meta["n"] = int(opts["pages"])
     if not meta["n"]:
@@ -3781,6 +4134,8 @@ HELP = f"""
   {B('Set up')}
     ./quest add book.pdf         build the map from the book's table of contents (chapters, quests, bosses)
     ./quest add other.pdf        a second PDF becomes an optional side-quest book (--dry-run to preview)
+    ./quest add book.pdf --ai    let Claude read the contents pages (any language, no bookmarks, scans;
+                                 needs pip install anthropic and ANTHROPIC_API_KEY; sends the first 40 pages)
     ./quest init                 recreate any missing folders/notes (never overwrites)
 
   {B('Daily loop')}

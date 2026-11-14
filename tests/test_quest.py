@@ -59,7 +59,7 @@ def make_pdf(path, chapters):
             for k in range(n):
                 lines = [f"Chapter {ci}: {title}"] if (si == 0 and k == 0) else []
                 lines += [f"{stitle}, page {k + 1}."] + ["The quick brown fox jumps over the lazy dog. " * 2] * 18
-                ops = ["BT /F1 22 Tf 72 720 Td"] if lines[0].startswith("Chapter") else ["BT /F1 11 Tf 72 720 Td"]
+                ops = ["BT /F1 22 Tf 72 610 Td"] if lines[0].startswith("Chapter") else ["BT /F1 11 Tf 72 610 Td"]
                 for i, ln in enumerate(lines):
                     if i == 1 and lines[0].startswith("Chapter"):
                         ops.append("/F1 11 Tf 0 -40 Td")
@@ -190,10 +190,173 @@ class Planning(unittest.TestCase):
         self.assertEqual(bosses[-1]["name"], "The Final Exam Titan")
         self.assertTrue(all(b["build"] == "none" and len(b["goals"]) == 5 for b in bosses))
 
+    def test_outline_under_one_title_entry(self):
+        rows = [[0, 1, "Cover"], [0, 3, "My Book"]] + [[1, 10 + 30 * i, f"Lesson {i + 1}"] for i in range(8)]
+        chapters, _ = q.plan_chapters({"n": 300, "labels": None, "outline": rows})
+        self.assertEqual([c["title"] for c in chapters], [f"Lesson {i}" for i in range(1, 9)])
+
+    def test_parts_found_by_chapter_numbers_in_any_language(self):
+        rows = [[0, 3, "Table des matières"], [0, 5, "Préface"], [0, 10, "Fondations"], [1, 11, "1 Démarrer"],
+                [1, 60, "2 Types"], [0, 120, "Pratique"], [1, 121, "3 Plus"], [1, 200, "4 Fin"],
+                [0, 280, "Annexe A : Outils"], [0, 290, "Index"]]
+        chapters, parts = q.plan_chapters({"n": 300, "labels": None, "outline": rows})
+        self.assertEqual(parts, {1: "Fondations", 2: "Pratique"})
+        self.assertEqual([(c["num"], c["part"], c["optional"]) for c in chapters],
+                         [(0, 0, True), (1, 1, False), (2, 1, False), (3, 2, False), (4, 2, False), (5, 2, True)])
+        self.assertEqual(chapters[4]["end"], "279")                 # stops before the appendix; Index is skipped
+
+    def test_german_names(self):
+        rows = [[0, 5, "Vorwort"], [0, 10, "Teil I: Grundlagen"], [1, 11, "Kapitel 1: Start"], [1, 60, "Kapitel 2: Typen"],
+                [0, 120, "Teil II: Praxis"], [1, 121, "Kapitel 3: Mehr"], [0, 290, "Stichwortverzeichnis"]]
+        chapters, parts = q.plan_chapters({"n": 300, "labels": None, "outline": rows})
+        self.assertEqual(parts, {1: "Grundlagen", 2: "Praxis"})
+        self.assertEqual([c["title"] for c in chapters], ["Before You Begin", "Start", "Typen", "Mehr"])
+
+    def test_numbered_sections_are_not_parts(self):
+        rows = [[0, 10, "1 Basics"], [1, 10, "1 Hello"], [1, 15, "2 World"], [0, 30, "2 More"], [1, 30, "1 Loops"],
+                [1, 40, "2 Functions"]]                             # section numbers start again in each chapter
+        chapters, parts = q.plan_chapters({"n": 60, "labels": None, "outline": rows})
+        self.assertEqual((len(chapters), parts), (2, {}))
+
     def test_side_book_keys(self):
         self.assertEqual(q.side_key("The Pragmatic Programmer", set()), "pp")
         self.assertEqual(q.side_key("The Pragmatic Programmer", {"pp"}), "pp2")
         self.assertEqual(q.side_key("Make", set()), "make")
+
+
+def contents_entries():
+    """What Claude returns for a small book: roman front matter, two parts, sections, an appendix and an index."""
+    rows = [("skip", "Contents", "v"), ("optional", "Vorwort", "vii"), ("part", "Teil I: Grundlagen", "1"),
+            ("chapter", "Kapitel 1: Start", "3"), ("section", "Installieren", "4"), ("section", "Erste Schritte", "10"),
+            ("chapter", "Kapitel 2: Typen", "20"), ("part", "Teil II: Praxis", "40"), ("chapter", "Kapitel 3: Mehr", "42"),
+            ("optional", "Anhang A: Werkzeuge", "70"), ("skip", "Stichwortverzeichnis", "80")]
+    return [{"kind": k, "title": t, "page": p} for k, t, p in rows]
+
+
+def book_text(n=100, front=10):
+    """Page heads of a typeset book whose printed page 1 is PDF page front + 1: a contents page, roman front
+    matter, chapter openers, running heads (title on odd pages, "N Chapter k" on even ones) and a body page that
+    happens to start with a later chapter's title."""
+    heads = {1: "Cover", 2: "Contents Vorwort vii Teil I Grundlagen 1 Kapitel 1 Start 3 Typen 20 Mehr 42 Anhang 70"}
+    heads.update({front - 3 + i: (f"V O R W O R T {'Why this book' * 3}" if i == 0 else f"Vorwort {['', 'viii', 'ix'][i]}")
+                  for i in range(3)})
+    openers = {1: "Teil I Grundlagen", 3: "Kapitel 1 S T A R T", 20: "Kapitel 2 TYPEN", 40: "TEIL II PRAXIS",
+               42: "Kapitel 3 MEHR", 70: "ANHANG A WERKZEUGE", 80: "STICHWORTVERZEICHNIS"}
+    title = None
+    for printed in range(1, n - front + 1):
+        pg = front + printed
+        if printed in openers:
+            heads[pg], title = openers[printed] + " In this chapter we look at things.", openers[printed]
+        elif title:
+            heads[pg] = f"{title.title()} {printed}" if pg % 2 else f"{printed} Chapter"
+    heads[front + 12] = "Typen are what this paragraph is about, as the next chapter shows."
+    return lambda a, b: [heads.get(p, "") for p in range(a, b + 1)]
+
+
+class AiContents(unittest.TestCase):
+    """./quest add --ai, without the network: the request it builds, and everything it does with the answer."""
+
+    def test_request(self):
+        p = q.ai_request(b"%PDF-1.7 pages", "claude-opus-5-5")
+        self.assertEqual((p["model"], p["max_tokens"], p["fallbacks"]), ("claude-opus-5-5", 64000, "default"))
+        self.assertEqual(p["betas"], ["server-side-fallback-2026-07-01"])
+        doc, text = p["messages"][0]["content"]
+        self.assertEqual(__import__("base64").b64decode(doc["source"]["data"]), b"%PDF-1.7 pages")
+        self.assertEqual((doc["type"], doc["source"]["media_type"], text["type"]), ("document", "application/pdf", "text"))
+        self.assertNotIn("fallbacks", q.ai_request(b"x", "claude-haiku-5-5"))     # no server-side fallback there
+
+    def test_schema_is_strict(self):
+        def walk(s):
+            if s.get("type") == "object":
+                self.assertIs(s["additionalProperties"], False)
+                self.assertEqual(sorted(s["required"]), sorted(s["properties"]))
+                for v in s["properties"].values():
+                    walk(v)
+            elif s.get("type") == "array":
+                walk(s["items"])
+        schema = q.ai_request(b"x", "claude-opus-5-5")["output_config"]["format"]["schema"]
+        walk(schema)
+        self.assertEqual(schema["properties"]["entries"]["items"]["properties"]["kind"]["enum"], list(q.AI_KINDS))
+
+    def test_printed_page(self):
+        self.assertEqual([q.printed_page(s) for s in ("23", " xv ", "XIV", "", "A-3", "iiii", "mmxx")],
+                         [("a", 23), ("r", 15), ("r", 14), None, None, None, ("r", 2020)])
+
+    def test_place_by_page_labels(self):
+        labels = ["c1", "c2", "c3", "c4", "v", "vi", "vii", "viii", "ix", "x"] + [str(i) for i in range(1, 91)]
+        pages, how = q.place_entries(contents_entries(), 100, labels, None)
+        self.assertEqual(pages, [5, 7, 11, 13, 14, 20, 30, 50, 52, 80, 90])
+        self.assertIn("page labels", how)
+
+    def test_place_by_text_despite_running_heads(self):
+        pages, how = q.place_entries(contents_entries(), 100, [str(i) for i in range(1, 101)], book_text(),
+                                     contents_until=4)
+        self.assertEqual(pages, [5, 7, 11, 13, 14, 20, 30, 50, 52, 80, 90])
+        self.assertIn("printed page 1 is PDF page 11", how)
+
+    def test_offset_flag(self):
+        pages, how = q.place_entries(contents_entries(), 100, None, book_text(), offset=10, contents_until=4)
+        self.assertEqual(pages[2:], [11, 13, 14, 20, 30, 50, 52, 80, 90])
+        self.assertTrue(how.startswith("--offset 10"))
+
+    def test_no_match_gives_up(self):
+        self.assertEqual(q.place_entries(contents_entries(), 100, None, lambda a, b: [""] * (b - a + 1)), (None, None))
+
+    def test_outline_and_plan(self):
+        pages = [5, 7, 11, 13, 14, 20, 30, 50, 52, 80, 90]
+        rows = q.ai_outline(contents_entries(), pages, 100)
+        self.assertEqual([r[0] for r in rows], [0, 0, 0, 1, 2, 2, 1, 0, 1, 0, 0])
+        chapters, parts = q.plan_chapters({"n": 100, "labels": None, "outline": rows})
+        self.assertEqual(parts, {1: "Grundlagen", 2: "Praxis"})
+        self.assertEqual([(c["num"], c["title"], c["part"], c["optional"]) for c in chapters],
+                         [(0, "Before You Begin", 0, True), (1, "Start", 1, False), (2, "Typen", 1, False),
+                          (3, "Mehr", 2, False), (4, "Anhang A: Werkzeuge", 2, True)])
+        self.assertEqual((chapters[3]["pdf"], chapters[3]["end"]), (52, "79"))
+
+    def test_entries_out_of_order_are_dropped(self):
+        rows = q.ai_outline(contents_entries(), [5, 7, 11, 13, 14, 20, 12, 50, 52, 80, 90], 100)
+        self.assertNotIn("Kapitel 2: Typen", [r[2] for r in rows])
+
+    def ask(self, message):
+        """Run ai_ask against a stand-in for the anthropic package that returns `message`."""
+        import contextlib
+        import io
+        import types
+        fake = types.ModuleType("anthropic")
+        for name in ("AnthropicError", "APIStatusError", "AuthenticationError", "APIConnectionError"):
+            setattr(fake, name, type(name, (Exception,), {}))
+
+        class Stream:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def get_final_message(self):
+                return message
+        fake.Anthropic = lambda: SimpleNamespace(beta=SimpleNamespace(messages=SimpleNamespace(stream=lambda **kw: Stream())))
+        saved = sys.modules.get("anthropic")
+        sys.modules["anthropic"] = fake
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                return q.ai_ask({})
+        finally:
+            sys.modules.pop("anthropic")
+            if saved:
+                sys.modules["anthropic"] = saved
+
+    def message(self, stop, text):
+        return SimpleNamespace(stop_reason=stop, content=[SimpleNamespace(type="text", text=text)],
+                               usage=SimpleNamespace(input_tokens=1200, output_tokens=80))
+
+    def test_answer_parsed(self):
+        self.assertEqual(self.ask(self.message("end_turn", '{"entries": []}')), ({"entries": []}, 1200, 80))
+
+    def test_refusal_and_cut_off_answers_stop(self):
+        for m in (self.message("refusal", ""), self.message("max_tokens", '{"entr'), self.message("end_turn", "nope")):
+            with self.assertRaises(SystemExit):
+                self.ask(m)
 
 
 class Validation(unittest.TestCase):
@@ -247,6 +410,29 @@ class Pages(unittest.TestCase):
 
 
 # ───────────────────────────── end to end (macOS) ─────────────────────────────
+FAKE_ANTHROPIC = '''"""Stands in for the anthropic package in test_add_with_ai: logs the request, returns FAKE_ANSWER."""
+import json, os
+from types import SimpleNamespace as NS
+
+class AnthropicError(Exception): pass
+class APIStatusError(AnthropicError): pass
+class AuthenticationError(APIStatusError): pass
+class APIConnectionError(AnthropicError): pass
+
+class _Stream:
+    def __init__(self, params): self.params = params
+    def __enter__(self): return self
+    def __exit__(self, *exc): return False
+    def get_final_message(self):
+        with open(os.environ["FAKE_LOG"], "w") as f: json.dump(self.params, f)
+        with open(os.environ["FAKE_ANSWER"]) as f: text = f.read()
+        return NS(stop_reason="end_turn", content=[NS(type="text", text=text)], usage=NS(input_tokens=900, output_tokens=60))
+
+class Anthropic:
+    def __init__(self): self.beta = NS(messages=NS(stream=lambda **params: _Stream(params)))
+'''
+
+
 @unittest.skipUnless(NATIVE, "needs macOS with swiftc (PDFKit)")
 class EndToEnd(unittest.TestCase):
     @classmethod
@@ -286,12 +472,39 @@ class EndToEnd(unittest.TestCase):
         shutil.rmtree(cls.dir, ignore_errors=True)
 
     @classmethod
-    def run_quest(cls, *args):
+    def run_quest(cls, *args, env=None):
         r = subprocess.run([sys.executable, "quest", *args], cwd=cls.dir, capture_output=True, text=True,
-                           env={"NO_COLOR": "1", "PATH": "/usr/bin:/bin:/usr/sbin:/sbin"}, timeout=600)
+                           env={"NO_COLOR": "1", "PATH": "/usr/bin:/bin:/usr/sbin:/sbin", **(env or {})}, timeout=600)
         if r.returncode:
             raise AssertionError(r.stdout + r.stderr)
         return r.stdout
+
+    def test_add_with_ai(self):
+        # ./quest add --ai end to end, with a stand-in for the anthropic package that logs the request and gives
+        # back the contents of the test book. The helper cuts out the pages; page text lines up the numbers.
+        sdk = self.dir / "fake_sdk" / "anthropic"
+        sdk.mkdir(parents=True)
+        (sdk / "__init__.py").write_text(FAKE_ANTHROPIC)
+        answer = {"title": "Test Book", "author": "A. Writer", "found_contents": True, "complete": True, "entries": [
+            {"kind": "chapter", "title": "Getting Started", "page": "1"}, {"kind": "section", "title": "Setup", "page": "1"},
+            {"kind": "section", "title": "First Steps", "page": "6"}, {"kind": "section", "title": "Next Steps", "page": "10"},
+            {"kind": "chapter", "title": "Going Further", "page": "15"}, {"kind": "section", "title": "Pitfalls", "page": "21"},
+            {"kind": "chapter", "title": "Wrapping Up", "page": "24"}]}
+        (self.dir / "answer.json").write_text(json.dumps(answer))
+        env = {"PYTHONPATH": str(self.dir / "fake_sdk"), "FAKE_ANSWER": str(self.dir / "answer.json"),
+               "FAKE_LOG": str(self.dir / "request.json")}
+        out = self.run_quest("add", "Test Book.pdf", "--ai", "--dry-run", env=env)
+        self.assertIn("3 chapters", out)
+        self.assertIn("printed page 1 is PDF page 1", out)
+        self.assertRegex(out, r"Going Further\s+p\.15–23")
+        sent = json.loads((self.dir / "request.json").read_text())
+        self.assertEqual(sent["model"], "claude-opus-5-5")
+        pages = __import__("base64").b64decode(sent["messages"][0]["content"][0]["source"]["data"])
+        self.assertTrue(pages.startswith(b"%PDF"))
+        (self.dir / "request.json").unlink()
+        again = self.run_quest("add", "Test Book.pdf", "--ai", "--dry-run", env=env)
+        self.assertIn("earlier reading", again)                    # answered from .quest/.cache/ai: no request
+        self.assertFalse((self.dir / "request.json").exists())
 
     @classmethod
     def request(cls, method, path, body=None, headers=None):
