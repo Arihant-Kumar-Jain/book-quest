@@ -505,9 +505,13 @@ function layoutWorld(st){
   // region names: each part's name under its stretch of road, or the book's title
   const groups = parts.length ? parts.map(p => ({name: p.name, pts: STOPS.filter(s => s[0] === "ch" && p.chapters.includes(s[1]))}))
                               : [{name: st.book.short, pts: STOPS}];
+  // (below the road, unless another part's chapters sit there; then above it)
   REGIONS = groups.filter(g => g.pts.length).map(g => {
     const xs = g.pts.map(s => s[2]), ys = g.pts.map(s => s[3]);
-    return {name: g.name.toUpperCase(), x: (Math.min(...xs) + Math.max(...xs)) / 2, y: Math.max(...ys) + 340};
+    const others = STOPS.filter(s => s[0] === "ch" && !g.pts.includes(s));
+    const crowd = y => others.filter(s => Math.abs(s[3] - y) < 380).length;
+    const below = Math.max(...ys) + 340, above = Math.max(SKY + 260, Math.min(...ys) - 340);
+    return {name: g.name.toUpperCase(), x: (Math.min(...xs) + Math.max(...xs)) / 2, y: crowd(below) <= crowd(above) ? below : above};
   });
   // side books spread across the sky
   st.side.forEach((s, i) => SKY_X[s.key] = W * (i + .5) / st.side.length);
@@ -753,7 +757,7 @@ function renderSky(){
 }
 
 /* ───────────── view: pan, zoom, fly ───────────── */
-function kMin(){ return Math.min(innerWidth / W, innerHeight / H) * .92; }
+function kMin(){ return Math.min(innerWidth / W, (innerHeight - 100) / H) * .92; }   // 100: room for the top HUD
 const K_MAX = 2.8;
 function clampView(){
   const v = S.view, sw = innerWidth, sh = innerHeight, ww = W * v.k, wh = H * v.k, m = 160;
@@ -806,7 +810,14 @@ function homeView(){
   const cur = S.st.current ?? LAST_CH;
   flyToKey("ch:" + cur, .62);
 }
-function worldView(){ const k = kMin(); flyTo(W / 2, H / 2, k, 800); }
+/* whole world, with its top edge below the HUD so the sky's book names stay readable */
+function worldFit(){
+  const k = kMin(), [, sy] = viewCenter();
+  const hud = Math.max(0, ...["hud-l", "hud-c", "hud-r"].map(id => { const e = document.getElementById(id); return e ? e.getBoundingClientRect().bottom : 0; }));
+  const top = Math.max((innerHeight - H * k) / 2, Math.min(hud + 12, innerHeight - H * k));
+  return [W / 2, (sy - top) / k, k];
+}
+function worldView(){ flyTo(...worldFit(), 800); }
 function jumpTo(wx, wy, k){
   stopMotion();
   const v = S.view, [sx, sy] = viewCenter();
@@ -818,7 +829,7 @@ function applyHash(animate){
   if (!h) return false;
   const [key, z] = h.split("@");
   const go = (x, y, k) => animate ? flyTo(x, y, k) : jumpTo(x, y, k);
-  if (key === "world"){ closePanel(); go(W / 2, H / 2, kMin()); return true; }
+  if (key === "world"){ closePanel(); go(...worldFit()); return true; }
   if (key === "sky"){ closePanel(); go(W / 2, SKY / 2, Math.max(kMin(), innerWidth / W * 1.05)); return true; }
   const p = S.nodes[key];
   if (!p) return false;
@@ -1025,7 +1036,21 @@ function select(key){
   document.querySelectorAll(`[data-k="${CSS.escape(key)}"]`).forEach(n => n.classList.add("sel"));
   renderPanel(key);
   document.body.classList.add("panel-open");
+  const b = document.querySelector('#pb [data-act="pdf"]');
+  if (b) warm(b.dataset.key || "main", +b.dataset.pdf || 1);
 }
+/* warm-up: when the map points at a page (a quest is selected, or "Open the book" is hovered), the Mac
+   starts drawing it for the iPad, so by the time you click there's nothing left to wait for */
+let warmed = "";
+function warm(key, pdf){
+  if (!IS_LOCAL || !S.ipad || !S.ipad.connected || warmed === key + ":" + pdf) return;
+  warmed = key + ":" + pdf;
+  api("/api/warm", {key, page:pdf}).catch(() => {});
+}
+document.addEventListener("pointerover", e => {
+  const b = e.target.closest && e.target.closest('[data-act="pdf"]');
+  if (b) warm(b.dataset.key || "main", +b.dataset.pdf || 1);
+});
 function closePanel(){ document.body.classList.remove("panel-open"); document.querySelectorAll(".node.sel").forEach(n => n.classList.remove("sel")); S.sel = null; }
 function fmtDate(iso){ if (!iso) return ""; const d = new Date(iso); return d.toLocaleDateString(undefined, {month:"short", day:"numeric"}); }
 function chip(t, c = ""){ return `<span class="chip ${c}">${t}</span>`; }
@@ -1165,10 +1190,11 @@ async function openBook(key, pdf, label, quest){
     else toast(`📖 Opening the book on your Mac. Jump to page <b>${esc(label || pdf)}</b> with ⌥⌘G in Preview.${S.ipad && S.ipad.lan ? "" : ` <span class="muted">Reading on an iPad? Click 📲.</span>`}`);
   } catch (err){ toast("Couldn't open the book: " + esc(err.message)); }
 }
-function loadScript(src){
+function loadScript(src, integrity){           // pinned versions with Subresource Integrity: a changed file won't run
   return new Promise((ok, bad) => {
     if ([...document.scripts].some(s => s.src === src)) return ok();
-    const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = bad; document.head.appendChild(s);
+    const s = document.createElement("script"); s.src = src; s.integrity = integrity; s.crossOrigin = "anonymous";
+    s.onload = ok; s.onerror = bad; document.head.appendChild(s);
   });
 }
 async function pairPoll(addrs){
@@ -1208,7 +1234,8 @@ async function ipadModal(){
   };
   $("#addr-pick").addEventListener("click", e => { const b = e.target.closest("[data-addr]"); if (b) draw(+b.dataset.addr); });
   try {
-    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js");
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js",
+                     "sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1");
     qrReady = true; draw(0);
   } catch (e){ $("#qr").textContent = "The QR code needs internet. Type the address below into Safari instead."; }
   clearInterval(pairTimer);

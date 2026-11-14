@@ -96,11 +96,17 @@ def die(msg, code=1):
     sys.exit(code)
 
 
+_ROOT_PREFIX = str(ROOT) + os.sep
+
+
 def rel(p):
+    s = str(p)
+    if s.startswith(_ROOT_PREFIX) and "/.." not in s:
+        return s[len(_ROOT_PREFIX):]          # already under ROOT: no need to ask the file system
     try:
         return str(Path(p).resolve().relative_to(ROOT))
     except ValueError:
-        return str(p)
+        return s
 
 
 def wrap(text, indent, width=78):
@@ -536,6 +542,9 @@ __pycache__/
 .quest/*.tmp
 .quest/pair.key
 .quest/.bin/
+.quest/.cache/
+.quest/perf.json
+.quest/ink/
 .DS_Store
 
 # your copies of the books are copyrighted: never commit them
@@ -1956,7 +1965,7 @@ def read_pdf_meta(pdf):
         print(DIM("  Building the PDF helper (one time, a few seconds)…"))
     if renderer.available():
         try:
-            meta = json.loads(renderer._call(f"O\t{pdf}"))
+            meta = json.loads(renderer._call(f"O\t{pdf}")[0])
             meta["labels"] = renderer.info(pdf)["labels"]
             return meta
         except (OSError, ValueError) as e:
@@ -2352,6 +2361,54 @@ def open_in_editor(path):
 
 
 READER_HTML = QDIR / "reader.html"
+INK_DIR = QDIR / "ink"                       # Pencil ink, one JSON file per book: {page: [strokes]}
+ICON_DIR = QDIR / "icons"                    # the home-screen app's icons
+
+
+def unit_for_page(book, key, pg):
+    """→ (chapter or side book, reading quest) that PDF page `pg` belongs to, for its notes.md."""
+    def span(q):
+        lo = q.get("pdf", q["page"])
+        return (lo, q["end"]) if isinstance(lo, int) and isinstance(q["end"], int) else (None, None)
+    if key in (None, "", "main"):
+        for c in book.chapters:
+            for q in c["reading"]:
+                lo, hi = span(q)
+                if lo is not None and lo <= pg <= hi:
+                    return c, q
+        before = [c for c in book.chapters if c["reading"] and (span(c["reading"][0])[0] or 0) <= pg]
+        return (before[-1] if before else book.chapters[0]), None
+    s_ = book.side.get(key)
+    if not s_:
+        return None, None
+    for sc in s_["chapters"]:
+        for q in sc["reading"]:
+            lo, hi = span(q)
+            if lo is not None and lo <= pg <= hi:
+                return s_, q
+    return s_, None
+
+
+def clean_strokes(strokes):
+    """Keep only well-formed strokes: pen or highlighter, a color, a width, and [x, y, pressure] points in 0..1."""
+    out = []
+    if not isinstance(strokes, list):
+        return None
+    for st in strokes[:3000]:
+        if not isinstance(st, dict) or st.get("t") not in ("pen", "hl") or not isinstance(st.get("pts"), list):
+            return None
+        c = str(st.get("c") or "#111111")[:9]
+        w = st.get("w")
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}", c) or not isinstance(w, (int, float)) or not 0 < w < 0.1:
+            return None
+        pts = []
+        for pt in st["pts"][:6000]:
+            if not (isinstance(pt, list) and len(pt) == 3 and all(isinstance(v, (int, float)) for v in pt)):
+                return None
+            pts.append([round(min(1.2, max(-0.2, pt[0])), 5), round(min(1.2, max(-0.2, pt[1])), 5), round(min(1, max(0, pt[2])), 3)])
+        if pts:
+            out.append({"t": st["t"], "c": c, "w": round(w, 5), "pts": pts})
+    return out
 LOCAL_IPS = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
 
 
@@ -2424,15 +2481,22 @@ def lan_ip():
 
 
 RENDER_SRC = QDIR / "render.swift"
+RENDER_HDR = QDIR / "render_fast.h"                # C + ARM NEON hot loops, imported by render.swift
 RENDER_BIN = QDIR / ".bin" / "quest-render"
+PERF_FILE = QDIR / "perf.json"                  # timings reported by readers (git-ignored)
+PERF_KEYS = {"kind", "ms", "at", "mode", "dom_ms", "preview", "ttfb", "kb", "cached", "px"}
+PAGE_CACHE = QDIR / ".cache" / "pages"          # drawn pages, kept across restarts (git-ignored)
+PAGE_CACHE_MAX = int(os.environ.get("QUEST_CACHE_MB", "1024")) << 20
 
 
 class PageRenderer:
-    """Turns PDF pages into images with macOS PDFKit + ImageIO, through the small Swift helper in
-    .quest/render.swift (built once with swiftc). The iPad then shows plain images: no PDF.js, no
-    9 MB download, no internet. Rendered pages stay in memory, and neighbours are drawn ahead of time."""
+    """Turns PDF pages into images with macOS PDFKit, through the small Swift helper in .quest/render.swift
+    (built once with swiftc). The iPad then shows plain images: no PDF.js, no big download, no internet.
+    Text pages arrive as 16-shade PNGs about a quarter the size of a JPEG; pages stay in memory and on disk
+    (so a restart doesn't redraw them), the next ones are drawn ahead, and two helpers are always kept free
+    for whatever you're looking at right now."""
 
-    def __init__(self, workers=3):
+    def __init__(self, workers=4):
         import queue
         import threading
         from collections import OrderedDict
@@ -2440,21 +2504,24 @@ class PageRenderer:
         self.ready, self.ok, self.why = threading.Event(), False, ""
         self.idle, self.spawned, self.workers = queue.LifoQueue(), 0, workers
         self.mu = threading.Lock()
-        self.cache, self.cache_bytes, self.cache_max = OrderedDict(), 0, 192 << 20
-        self.inflight, self.infos = {}, {}
-        self.ahead = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="prerender")
+        self.cache, self.cache_bytes, self.cache_max = OrderedDict(), 0, 384 << 20
+        self.inflight, self.infos, self.gen = {}, {}, 0
+        self.interactive, self.fill_job = 0, None
+        self.ahead = ThreadPoolExecutor(max_workers=max(1, workers - 3), thread_name_prefix="prerender")
         threading.Thread(target=self._build, daemon=True).start()
+        threading.Thread(target=self.prune, daemon=True).start()
 
     def _build(self):
         try:
             if sys.platform != "darwin" or not shutil.which("swiftc"):
                 self.why = "the native renderer needs macOS with the Xcode command line tools"
                 return
-            if not RENDER_BIN.exists() or RENDER_BIN.stat().st_mtime < RENDER_SRC.stat().st_mtime:
+            newest = max(RENDER_SRC.stat().st_mtime, RENDER_HDR.stat().st_mtime)
+            if not RENDER_BIN.exists() or RENDER_BIN.stat().st_mtime < newest:
                 RENDER_BIN.parent.mkdir(exist_ok=True)
                 tmp = RENDER_BIN.with_name(RENDER_BIN.name + ".tmp")
-                r = subprocess.run(["swiftc", "-o", str(tmp), str(RENDER_SRC)], capture_output=True, text=True,
-                                   timeout=300)
+                r = subprocess.run(["swiftc", "-O", "-import-objc-header", str(RENDER_HDR), "-o", str(tmp), str(RENDER_SRC)],
+                                   capture_output=True, text=True, timeout=600)
                 if r.returncode:
                     self.why = "swiftc failed: " + r.stderr.strip()[-300:]
                     return
@@ -2487,6 +2554,7 @@ class PageRenderer:
         return self.idle.get()
 
     def _call(self, line):
+        """One request to a helper → (body, mime type)."""
         for attempt in (0, 1):
             p = self._take()
             try:
@@ -2504,7 +2572,7 @@ class PageRenderer:
             self.idle.put(p)
             if head[0] != "OK":
                 raise ValueError(body.decode("utf-8", "replace"))
-            return body
+            return body, (head[2] if len(head) > 2 else "application/octet-stream")
 
     @staticmethod
     def version(path):
@@ -2517,12 +2585,66 @@ class PageRenderer:
         if (path, v) not in self.infos:
             if "\t" in str(path) or "\n" in str(path):
                 raise ValueError("unsupported file name")
-            self.infos[(path, v)] = dict(json.loads(self._call(f"I\t{path}")), v=v)
+            self.infos[(path, v)] = dict(json.loads(self._call(f"I\t{path}")[0]), v=v)
         return self.infos[(path, v)]
 
-    def render(self, path, page, w, h):
+    def peek(self, path, page, w, h, kind="auto"):
+        with self.mu:
+            return self.cache.get((str(path), self.version(path), page, w, h, kind))
+
+    # ── disk cache: .quest/.cache/pages/<book>-<version>/<W>x<H>-<kind>/<page>.png|jpg ──
+    def _disk_dir(self, path, w, h, kind):
+        tag = hashlib.sha1(str(path).encode()).hexdigest()[:8]
+        return PAGE_CACHE / f"{tag}-{self.version(path)}" / f"{w}x{h}-{kind}"
+
+    def on_disk(self, path, page, w, h, kind="auto"):
+        d = self._disk_dir(path, w, h, kind)
+        return (d / f"{page}.png").exists() or (d / f"{page}.jpg").exists()
+
+    def _disk_get(self, path, page, w, h, kind):
+        d = self._disk_dir(path, w, h, kind)
+        for ext, mime in (("png", "image/png"), ("jpg", "image/jpeg")):
+            try:
+                return (d / f"{page}.{ext}").read_bytes(), mime
+            except OSError:
+                pass
+        return None
+
+    def _disk_put(self, path, page, w, h, kind, data, mime):
+        d = self._disk_dir(path, w, h, kind)
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            tmp = d / f".{page}.{os.getpid()}.{id(data)}.tmp"
+            tmp.write_bytes(data)
+            os.replace(tmp, d / f"{page}.{'png' if mime == 'image/png' else 'jpg'}")
+        except OSError:
+            pass
+
+    def prune(self):
+        """Keep the disk cache under its cap (1 GB by default), dropping the least recently used sizes first."""
+        try:
+            dirs = []
+            for d in PAGE_CACHE.glob("*/*"):
+                if d.is_dir():
+                    files = [f for f in d.iterdir() if f.is_file()]
+                    dirs.append((d.stat().st_mtime, d, sum(f.stat().st_size for f in files)))
+            total = sum(x[2] for x in dirs)
+            for _, d, size in sorted(dirs, key=lambda x: x[0]):
+                if total <= PAGE_CACHE_MAX:
+                    break
+                shutil.rmtree(d, ignore_errors=True)
+                total -= size
+            for top in PAGE_CACHE.glob("*"):
+                if top.is_dir() and not any(top.iterdir()):
+                    top.rmdir()
+        except OSError:
+            pass
+
+    def render(self, path, page, w, h, kind="auto", bg=False):
+        """→ (image bytes, mime type). kind "auto" is the sharp page, "preview" a small quick one.
+        bg=True marks background work, which steps aside while anything you're looking at is drawn."""
         from concurrent.futures import Future
-        key = (str(path), self.version(path), page, w, h)
+        key = (str(path), self.version(path), page, w, h, kind)
         with self.mu:
             if key in self.cache:
                 self.cache.move_to_end(key)
@@ -2533,38 +2655,123 @@ class PageRenderer:
                 fut = self.inflight[key] = Future()
         if not mine:
             return fut.result()
+        if not bg:
+            with self.mu:
+                self.interactive += 1
         try:
-            data = self._call(f"R\t{path}\t{page}\t{w}\t{h or 8192}\tjpeg\t0.8")   # h=0: fit the width
+            data = self._disk_get(path, page, w, h, kind)
+            if data is None:
+                # h=0: fit the width. Pages someone is waiting for use 8 cores; background work uses 1
+                data = self._call(f"R\t{path}\t{page}\t{w}\t{h or 8192}\t{kind}\t{1 if bg else 8}")
+                self._disk_put(path, page, w, h, kind, *data)
         except Exception as e:
             with self.mu:
                 self.inflight.pop(key, None)
+                self.interactive -= 0 if bg else 1
             fut.set_exception(e)
             raise
         with self.mu:
             self.inflight.pop(key, None)
+            self.interactive -= 0 if bg else 1
             self.cache[key] = data
-            self.cache_bytes += len(data)
+            self.cache_bytes += len(data[0])
             while self.cache_bytes > self.cache_max and self.cache:
-                self.cache_bytes -= len(self.cache.popitem(last=False)[1])
+                self.cache_bytes -= len(self.cache.popitem(last=False)[1][0])
         fut.set_result(data)
         return data
 
-    def prefetch(self, path, pages, w, h):
-        """Draw pages in the background so they are already in memory when the iPad asks."""
-        if self.ok:
-            self.ahead.submit(self._ahead, path, pages, w, h)
+    def warm(self, path):
+        """Start every helper now and let each open the book, so no request ever pays for a cold start."""
+        if not self.available():
+            return
+        procs = []
+        try:
+            for _ in range(self.workers):
+                procs.append(self._take())
+            for proc in procs:
+                proc.stdin.write(f"R\t{path}\t1\t64\t64\tpreview\n".encode())
+                proc.stdin.flush()
+            for proc in procs:
+                head = proc.stdout.readline().decode().split("\t")
+                proc.stdout.read(int(head[1]))
+        except (OSError, ValueError, IndexError):
+            pass
+        finally:
+            for proc in procs:
+                self.idle.put(proc)
 
-    def _ahead(self, path, pages, w, h):
+    def prefetch(self, path, pages, w, h, kind="auto"):
+        """Draw pages in the background so they are already in memory when the iPad asks.
+        Jobs that are still queued when you've moved on to a different page are dropped."""
+        if self.ok:
+            with self.mu:
+                self.gen += 1
+                gen = self.gen
+            self.ahead.submit(self._ahead, path, pages, w, h, kind, gen)
+
+    def _ahead(self, path, pages, w, h, kind, gen):
         try:
             n = self.info(path)["n"]
             for p in pages:
+                if self.gen - gen > 3:
+                    return                         # stale: the reader is somewhere else now
                 if 1 <= p <= n:
-                    self.render(path, p, w, h)
+                    self.render(path, p, w, h, kind, bg=True)
         except (OSError, ValueError):
             pass
 
+    def fill(self, path, center, w, h):
+        """Quietly draw the whole book at the reader's size, nearest pages first, on one helper, so a jump
+        to any page is just a transfer. The newest focus wins; anything you're looking at goes first."""
+        if not self.ok:
+            return
+        import threading
+        with self.mu:
+            if self.fill_job and self.fill_job[2:] == (w, h) and self.fill_job[0] == str(path):
+                fresh = False
+            else:
+                fresh = True
+            self.fill_job = (str(path), center, w, h)
+            start = not getattr(self, "filler", None)
+        if fresh:                                  # mark this size as recently used, for prune()
+            try:
+                os.utime(self._disk_dir(path, w, h, "auto"))
+            except OSError:
+                pass
+            if start:
+                self.filler = threading.Thread(target=self._filler, daemon=True, name="filler")
+        if start:
+            self.filler.start()
+
+    def _filler(self):
+        import time
+        while True:
+            job = self.fill_job
+            path, center, w, h = job
+            try:
+                n = self.info(Path(path))["n"]
+            except (OSError, ValueError):
+                time.sleep(1)
+                continue
+            for p in sorted(range(1, n + 1), key=lambda x: (abs(x - center) * (1 if x >= center else 1.5))):
+                if self.fill_job != job:
+                    break
+                if self.peek(Path(path), p, w, h) or self.on_disk(Path(path), p, w, h):
+                    continue
+                while self.interactive:
+                    time.sleep(0.005)
+                try:
+                    self.render(Path(path), p, w, h, bg=True)
+                except (OSError, ValueError):
+                    pass
+            while self.fill_job == job:
+                time.sleep(0.2)
+
 
 def cmd_world(book, args):
+    import base64
+    import ipaddress
+    import gzip
     import http.server
     import queue
     import secrets
@@ -2588,12 +2795,33 @@ def cmd_world(book, args):
     ip = lan_ip() if lan else "127.0.0.1"
     host_alt = local_hostname() if lan else None
     lock = threading.Lock()
+    perf_lock = threading.Lock()
+    ink_lock = threading.Lock()
     me = str(Path(__file__).resolve())
+
+    def record_perf(events, meta):
+        """Append timing samples (from a reader, or the Mac's own push round trips) to .quest/perf.json."""
+        clean = []
+        for e in events[:2000]:
+            if isinstance(e, dict) and isinstance(e.get("kind"), str) and isinstance(e.get("ms"), (int, float)):
+                row = {k: (v[:60] if isinstance(v, str) else v) for k, v in e.items()
+                       if k in PERF_KEYS and isinstance(v, (int, float, str, bool))}
+                row.update(meta)
+                clean.append(row)
+        with perf_lock:
+            try:
+                data = json.loads(PERF_FILE.read_text()) if PERF_FILE.exists() else []
+            except ValueError:
+                data = []
+            PERF_FILE.write_text(json.dumps((data + clean)[-20000:]))
+        return len(clean)
+    sys.setswitchinterval(0.0005)        # hand the GIL over quickly, so a push never waits behind busy threads
     renderer = PageRenderer()
     # Live link to open readers: each one holds a Server-Sent Events stream, "Open the book" pushes a
     # page down every stream at once, and the reader acknowledges it so the Mac knows it arrived.
     live = threading.Condition()
     nav = {"seq": 0, "acked": 0, "last": None}
+    radio = {"until": 0.0}  # while set, streams send a tiny keep-alive every 30 ms so the iPad's Wi-Fi stays awake
     readers = {}            # stream id -> queue of messages to send
     view = {}               # last image size a reader asked for, so a sent page can be drawn ahead
 
@@ -2609,6 +2837,8 @@ def cmd_world(book, args):
         """Index every book once at startup, so opening or switching books on the iPad is instant."""
         if not renderer.available():
             return
+        if pdf_for("main"):
+            renderer.warm(pdf_for("main"))
         for key in ["main"] + list(book.side):
             p = pdf_for(key)
             try:
@@ -2617,6 +2847,14 @@ def cmd_world(book, args):
             except (OSError, ValueError):
                 pass
     threading.Thread(target=warm_up, daemon=True).start()
+
+    def preview_size():
+        return max(16, view["w"] // 4), view["h"] // 4
+
+    def publish(event, msg):
+        with live:
+            for box in readers.values():
+                box.put((event, msg))
 
     def num(q, name, lo, hi, default=0):
         try:
@@ -2636,26 +2874,53 @@ def cmd_world(book, args):
         def is_local(self):
             return self.client_address[0] in LOCAL_IPS
 
+        def host_ok(self):
+            """Only answer requests addressed to an IP, localhost or a Bonjour .local name. A web page that points its
+            own domain at 127.0.0.1 (DNS rebinding) would send its domain as Host, and gets turned away here."""
+            h = (self.headers.get("Host") or "").strip().lower()
+            name = h[1:h.find("]")] if h.startswith("[") else h.rsplit(":", 1)[0]
+            if name == "localhost" or name.endswith(".local"):
+                return True
+            try:
+                ipaddress.ip_address(name)
+                return True
+            except ValueError:
+                return False
+
+        def end_headers(self):
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-Frame-Options", "DENY")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+            super().end_headers()
+
         def allowed(self, q):
             if self.is_local():
                 return True
             if not lan:
                 return False
             c = SimpleCookie(self.headers.get("Cookie", ""))
-            if "qk" in c and secrets.compare_digest(c["qk"].value, pair):
-                return True
             k = (q.get("key") or [""])[0]
-            if k and secrets.compare_digest(k, pair):
+            if ("qk" in c and secrets.compare_digest(c["qk"].value, pair)) or (k and secrets.compare_digest(k, pair)):
+                # (re)issue the pairing cookie: it renews every time the iPad connects, so it only lapses after
+                # a month without use. HttpOnly + SameSite=Strict: page scripts can't read it, other sites can't send it.
                 self.cookie = f"qk={pair}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000"
                 return True
             return False
 
         def send(self, code, body, ctype="application/json", cache="no-store"):
             data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode("utf-8")
+            zipped = len(data) > 1400 and ctype.startswith(("application/json", "text/")) and \
+                "gzip" in (self.headers.get("Accept-Encoding") or "")
+            if zipped:
+                data = gzip.compress(data, 1)          # level 1: 110 KB of quest state → ~29 KB in ~1 ms
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", cache)
+            if zipped:
+                self.send_header("Content-Encoding", "gzip")
+                self.send_header("Vary", "Accept-Encoding")
             if self.cookie:
                 self.send_header("Set-Cookie", self.cookie)
             self.end_headers()
@@ -2711,6 +2976,8 @@ def cmd_world(book, args):
                 last = None
             box = queue.Queue()
             with live:
+                if len(readers) >= 16:
+                    return self.send(503, {"error": "too many readers connected"})
                 readers[id(box)] = box
                 seq, replay = nav["seq"], nav["last"]
             try:
@@ -2726,14 +2993,18 @@ def cmd_world(book, args):
                     out += f"id: {replay['seq']}\nevent: nav\ndata: {json.dumps(replay)}\n\n"
                 self.wfile.write(out.encode())
                 while True:
+                    # An idle iPad naps its Wi-Fi radio between beacons (~100 ms), so a push that lands mid-nap
+                    # waits. Right after a hint (the Mac is about to click), keep-alives every 30 ms keep it awake.
+                    awake = radio["until"] > time.monotonic()
                     try:
-                        msg = box.get(timeout=10)
+                        msg = box.get(timeout=0.03 if awake else 10)
                     except queue.Empty:
-                        self.wfile.write(b": ping\n\n")
+                        self.wfile.write(b":\n\n" if awake else b": ping\n\n")
                         continue
                     if msg is None:
                         return
-                    self.wfile.write(f"id: {msg['seq']}\nevent: nav\ndata: {json.dumps(msg)}\n\n".encode())
+                    event, msg = msg
+                    self.wfile.write(f"id: {msg['seq']}\nevent: {event}\ndata: {json.dumps(msg)}\n\n".encode())
             except OSError:
                 pass
             finally:
@@ -2742,6 +3013,7 @@ def cmd_world(book, args):
 
         def page_image(self, m, q):
             key, pg = m.group(1), int(m.group(2))
+            kind = "preview" if q.get("lq") else "auto"
             p = pdf_for(key)
             if not p or not p.exists():
                 return self.send(404, {"error": "no such book here"})
@@ -2749,12 +3021,13 @@ def cmd_world(book, args):
                 return self.send(503, {"error": "native renderer not available"})
             w, h = num(q, "w", 16, 4096, 1024), num(q, "h", 0, 4096)
             try:
-                data = renderer.render(p, pg, w, h)
+                data, mime = renderer.render(p, pg, w, h, kind)
             except (OSError, ValueError) as e:
                 return self.send(404, {"error": str(e)})
-            self.send(200, data, "image/jpeg", "private, max-age=31536000, immutable")
-            if (q.get("ahead") or ["1"])[0] != "0":
-                renderer.prefetch(p, (pg + 1, pg + 2, pg - 1), w, h)
+            self.send(200, data, mime, "private, max-age=31536000, immutable")
+            if kind == "auto" and (q.get("ahead") or ["1"])[0] != "0":
+                renderer.prefetch(p, (pg + 1, pg + 2, pg + 3, pg - 1), w, h)
+                renderer.fill(p, pg, w, h)
 
         def page(self, f):
             html = f.read_text(encoding="utf-8").replace("__QUEST_TOKEN__", token)
@@ -2763,6 +3036,8 @@ def cmd_world(book, args):
         def do_GET(self):
             u = urlparse(self.path)
             q, path = parse_qs(u.query), u.path
+            if not self.host_ok():
+                return self.send(421, {"error": "unexpected Host header"})
             if not self.allowed(q):
                 return self.send(403, "<meta name=viewport content='width=device-width'><body style='font:18px -apple-system;"
                                       "padding:40px;background:#0a0d16;color:#efe6d2'><h2>🔒 Locked</h2><p>Scan the QR code from "
@@ -2772,7 +3047,37 @@ def cmd_world(book, args):
                 return self.page(WORLD_HTML)
             if path == "/read":
                 return self.page(READER_HTML)
-            m = re.fullmatch(r"/page/([a-z]+)/(\d+)\.jpg", path)
+            if path == "/manifest.webmanifest":                # makes "Add to Home Screen" a real app
+                return self.send(200, {"name": f"Quest Reader · {getattr(book, 'short', 'Book')}", "short_name": "Quest Reader",
+                                       "start_url": "/read", "scope": "/", "display": "standalone",
+                                       "background_color": "#0a0d16", "theme_color": "#0a0d16",
+                                       "icons": [{"src": "/icon-180.png", "sizes": "180x180", "type": "image/png"},
+                                                 {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png"}]},
+                                 "application/manifest+json")
+            m_icon = re.fullmatch(r"/(icon-(?:180|512)\.png|apple-touch-icon\.png)", path)
+            if m_icon:
+                f_ = ICON_DIR / ("icon-180.png" if m_icon.group(1) == "apple-touch-icon.png" else m_icon.group(1))
+                return self.send(200, f_.read_bytes(), "image/png", "max-age=86400") if f_.exists() else \
+                    self.send(404, {"error": "no icon"})
+            if path == "/api/ink":
+                key = (q.get("key") or ["main"])[0]
+                if key != "main" and key not in book.side:
+                    return self.send(400, {"error": "unknown book"})
+                f_ = INK_DIR / f"{key}.json"
+                with ink_lock:
+                    return self.send(200, f_.read_bytes() if f_.exists() else b"{}")
+            if path == "/api/notes":
+                key = (q.get("key") or ["main"])[0]
+                unit, quest_ = unit_for_page(book, key, num(q, "page", 1, 100000, 1))
+                if not unit:
+                    return self.send(400, {"error": "unknown book"})
+                f_ = ROOT / unit["dir"] / "notes.md"
+                text = f_.read_text(encoding="utf-8") if f_.exists() else ""
+                title = f"Chapter {unit['num']} · {unit['title']}" if "num" in unit else unit.get("short", unit.get("title", ""))
+                return self.send(200, {"title": title, "path": rel(f_), "text": text,
+                                       "mtime": str(f_.stat().st_mtime_ns if f_.exists() else 0),
+                                       "quest": {"id": quest_["id"], "title": quest_["title"]} if quest_ else None})
+            m = re.fullmatch(r"/page/([a-z]+)/(\d+)(?:\.\w+)?", path)
             if m:
                 return self.page_image(m, q)
             if path.startswith("/pdf/") and path.endswith(".pdf"):
@@ -2813,15 +3118,26 @@ def cmd_world(book, args):
         def do_POST(self):
             u = urlparse(self.path)
             q, path = parse_qs(u.query), u.path
+            if not self.host_ok():
+                return self.send(421, {"error": "unexpected Host header"})
             if not self.allowed(q):
                 return self.send(403, {"error": "this device isn't paired"})
-            if self.headers.get("X-Quest-Token") != token:
+            if not secrets.compare_digest(self.headers.get("X-Quest-Token") or "", token):
                 return self.send(403, {"error": "bad token: reload the page"})
             origin = self.headers.get("Origin")
             if origin and origin != "http://" + (self.headers.get("Host") or ""):
                 return self.send(403, {"error": "bad origin"})
             try:
-                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+                size = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                size = -1
+            if not 0 <= size <= 32 << 20:
+                self.close_connection = True                 # don't read a body we won't accept
+                return self.send(413, {"error": "request too large"})
+            try:
+                body = json.loads(self.rfile.read(size) or b"{}")
+                if not isinstance(body, dict):
+                    raise ValueError
             except ValueError:
                 return self.send(400, {"error": "bad json"})
             if path == "/api/cmd":
@@ -2858,20 +3174,136 @@ def cmd_world(book, args):
                 missed = False
                 if body.get("where") != "mac" and reader_connected():
                     t0 = time.perf_counter()
-                    if view and renderer.ok:
-                        renderer.prefetch(p, (pg, pg + 1), view["w"], view["h"])
+                    pv = renderer.peek(p, pg, *preview_size(), "preview") if view and renderer.ok else None
                     with live:
                         nav["seq"] += 1
-                        msg = nav["last"] = {"seq": nav["seq"], "key": key, "page": pg, "quest": body.get("quest")}
+                        msg = nav["last"] = {"seq": nav["seq"], "key": key, "page": pg, "quest": body.get("quest"),
+                                             "preview": f"data:{pv[1]};base64,{base64.b64encode(pv[0]).decode()}" if pv else None}
                         for box in readers.values():
-                            box.put(msg)
+                            box.put(("nav", msg))
+                    if view and renderer.ok:
+                        renderer.prefetch(p, (pg, pg + 1, pg + 2), view["w"], view["h"])
+                        if not pv:                 # not drawn yet: push now, send the quick preview right behind it
+                            def late(seq=msg["seq"]):
+                                try:
+                                    d, mime = renderer.render(p, pg, *preview_size(), "preview")
+                                    publish("preview", {"seq": seq, "key": key, "page": pg,
+                                                        "preview": f"data:{mime};base64,{base64.b64encode(d).decode()}"})
+                                except (OSError, ValueError):
+                                    pass
+                            threading.Thread(target=late, daemon=True).start()
+                    with live:
                         missed = not live.wait_for(lambda: nav["acked"] >= msg["seq"], timeout=1.5)
                     if not missed:
-                        return self.send(200, {"where": "ipad", "ms": round((time.perf_counter() - t0) * 1000)})
+                        rtt = (time.perf_counter() - t0) * 1000
+                        if not body.get("bench"):
+                            record_perf([{"kind": "push_ack_rtt", "ms": round(rtt, 3), "at": int(time.time() * 1000),
+                                          "preview": bool(msg.get("preview"))}], {"device": "mac"})
+                        return self.send(200, {"where": "ipad", "ms": round(rtt)})
+                if body.get("bench"):
+                    return self.send(504, {"error": "no reader answered"})   # ./quest bench never opens Preview
                 if not self.is_local() or not opener():
                     return self.send(400, {"error": "no PDF viewer here"})
                 subprocess.Popen([opener(), str(p)])
                 return self.send(200, {"where": "mac", "missed": missed})
+            if path == "/api/warm":
+                # The Mac's map is pointing at a page (a quest is selected or "Open the book" is hovered):
+                # draw it for the iPad now, so the click has nothing left to wait for.
+                p = pdf_for(body.get("key") or "main")
+                try:
+                    pg = int(body.get("page") or 1)
+                except (TypeError, ValueError):
+                    return self.send(400, {"error": "bad page"})
+                if p and view and renderer.ok:
+                    renderer.prefetch(p, (pg,), *preview_size(), "preview")
+                    renderer.prefetch(p, (pg, pg + 1), view["w"], view["h"])
+                if p and readers:
+                    # tell the reader too: it fetches and decodes the page now, and its radio wakes up
+                    radio["until"] = time.monotonic() + 2.5
+                    publish("hint", {"seq": nav["seq"], "key": body.get("key") or "main", "page": pg})
+                return self.send(200, {"ok": True, "warm": bool(p and view and renderer.ok)})
+            if path == "/api/ink":
+                key = body.get("key") or "main"
+                if key != "main" and key not in book.side:
+                    return self.send(400, {"error": "unknown book"})
+                try:
+                    pg = int(body.get("page"))
+                except (TypeError, ValueError):
+                    return self.send(400, {"error": "bad page"})
+                strokes = clean_strokes(body.get("strokes"))
+                if strokes is None:
+                    return self.send(400, {"error": "bad strokes"})
+                INK_DIR.mkdir(exist_ok=True)
+                f_ = INK_DIR / f"{key}.json"
+                with ink_lock:
+                    try:
+                        data = json.loads(f_.read_text()) if f_.exists() else {}
+                    except ValueError:
+                        data = {}
+                    if strokes:
+                        data[str(pg)] = strokes
+                    else:
+                        data.pop(str(pg), None)
+                    blob = json.dumps(data, separators=(",", ":"))
+                    if len(blob) > 16 << 20:
+                        return self.send(413, {"error": "too much ink in this book"})
+                    tmp = f_.with_suffix(".tmp")
+                    tmp.write_text(blob)
+                    os.replace(tmp, f_)
+                return self.send(200, {"ok": True, "strokes": len(strokes)})
+            if path == "/api/transcribe":
+                key = body.get("key") or "main"
+                p = pdf_for(key)
+                if not p or not renderer.available(0):
+                    return self.send(503, {"error": "handwriting needs the native helper (macOS)"})
+                try:
+                    pg = int(body.get("page"))
+                except (TypeError, ValueError):
+                    return self.send(400, {"error": "bad page"})
+                f_ = INK_DIR / f"{key}.json"
+                with ink_lock:
+                    strokes = (json.loads(f_.read_text()) if f_.exists() else {}).get(str(pg), [])
+                if not strokes:
+                    return self.send(200, {"text": ""})
+                sizes_ = renderer.info(p)["sizes"]
+                if not 1 <= pg <= len(sizes_):
+                    return self.send(400, {"error": "no such page"})
+                w_, h_ = sizes_[pg - 1]
+                tmp = QDIR / f".ink-{os.getpid()}-{threading.get_ident()}.json"
+                tmp.write_text(json.dumps({"strokes": strokes, "aspect": h_ / w_}))
+                t0 = time.perf_counter()
+                try:
+                    text, _ = renderer._call(f"T\t{tmp}")
+                finally:
+                    tmp.unlink(missing_ok=True)
+                return self.send(200, {"text": text.decode("utf-8", "replace"), "ms": round((time.perf_counter() - t0) * 1000)})
+            if path == "/api/notes":
+                key = body.get("key") or "main"
+                try:
+                    unit, quest_ = unit_for_page(book, key, int(body.get("page") or 1))
+                except (TypeError, ValueError):
+                    return self.send(400, {"error": "bad page"})
+                text = body.get("text")
+                if not unit or not isinstance(text, str) or len(text) > 1 << 20:
+                    return self.send(400, {"error": "bad notes"})
+                f_ = ROOT / unit["dir"] / "notes.md"
+                with lock:
+                    now_m = str(f_.stat().st_mtime_ns if f_.exists() else 0)   # a string: too big for a JS number
+                    if body.get("mtime") is not None and str(body.get("mtime")) != now_m:
+                        # edited on the Mac since the iPad loaded it: don't overwrite, hand back the newer text
+                        return self.send(409, {"error": "changed on the Mac", "text": f_.read_text(encoding="utf-8"), "mtime": now_m})
+                    f_.parent.mkdir(parents=True, exist_ok=True)
+                    tmp = f_.with_suffix(".md.tmp")
+                    tmp.write_text(text, encoding="utf-8")
+                    os.replace(tmp, f_)
+                    return self.send(200, {"ok": True, "mtime": str(f_.stat().st_mtime_ns), "lines": notes_lines(book, unit)})
+            if path == "/api/perf":
+                ua = str(body.get("ua") or "")[:160]
+                device = "iPad" if "iPad" in ua or ("Macintosh" in ua and not self.is_local()) else \
+                    "iPhone" if "iPhone" in ua else "Mac browser" if self.is_local() else "other"
+                n = record_perf(body.get("events") or [], {"device": device, "dpr": body.get("dpr"),
+                                                            "vw": body.get("vw"), "vh": body.get("vh")})
+                return self.send(200, {"ok": True, "stored": n})
             if path == "/api/ack":
                 try:
                     seq = int(body.get("seq"))
@@ -2890,8 +3322,17 @@ def cmd_world(book, args):
                 return self.send(200, {"ok": ok})
             return self.send(404, {"error": "not found"})
 
+    class Server(http.server.ThreadingHTTPServer):
+        def handle_error(self, request, client_address):
+            # Browsers drop idle or half-finished connections all the time (a reload, Safari tidying up
+            # its keep-alive sockets, an iPad going to sleep). That's normal: don't print a traceback.
+            e = sys.exc_info()[1]
+            if isinstance(e, (ConnectionError, TimeoutError)) or (isinstance(e, OSError) and e.errno in (22, 57)):
+                return                               # 22/57: the socket was already gone (EINVAL, ENOTCONN)
+            super().handle_error(request, client_address)
+
     try:
-        srv = http.server.ThreadingHTTPServer(("0.0.0.0" if lan else "127.0.0.1", port), Handler)
+        srv = Server(("0.0.0.0" if lan else "127.0.0.1", port), Handler)
     except OSError:
         die(f"Port {port} is busy. Is the world already open? Try ./quest world --port {port + 1}")
     url = f"http://127.0.0.1:{port}/"
@@ -2913,6 +3354,425 @@ def cmd_world(book, args):
         print("\n  👋 World closed. Your progress is saved.")
     finally:
         srv.server_close()
+
+
+# ───────────────────────────── bench: measure everything ─────────────────────────────
+BENCH_DIR = ROOT / "bench"
+BENCH_W, BENCH_H = 1608, 2328            # an iPad-sized page box nobody else draws at, so "cold" is truly cold
+
+
+def _pct(xs, q):
+    xs = sorted(x for x in xs if x is not None)
+    if not xs:
+        return None
+    k = (len(xs) - 1) * q
+    lo = int(k)
+    hi = min(lo + 1, len(xs) - 1)
+    return xs[lo] + (xs[hi] - xs[lo]) * (k - lo)
+
+
+def _stats(xs):
+    xs = [x for x in xs if x is not None]
+    return {"n": len(xs), "p50": _pct(xs, .5), "p90": _pct(xs, .9), "p95": _pct(xs, .95), "p99": _pct(xs, .99),
+            "min": min(xs) if xs else None, "max": max(xs) if xs else None}
+
+
+def _f(v, unit="ms", nd=2):
+    if v is None:
+        return "—"
+    if unit == "KB":
+        return f"{v / 1024:,.1f} KB"
+    if unit == "µs":
+        return f"{v * 1000:,.0f} µs"
+    return f"{v:,.{nd}f} ms"
+
+
+def machine_info():
+    import platform
+
+    def sysctl(k):
+        try:
+            return subprocess.run(["sysctl", "-n", k], capture_output=True, text=True, timeout=3).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
+    return {"cpu": sysctl("machdep.cpu.brand_string") or platform.processor(), "cores": int(sysctl("hw.ncpu") or 0),
+            "performance_cores": sysctl("hw.perflevel0.physicalcpu"), "efficiency_cores": sysctl("hw.perflevel1.physicalcpu"),
+            "memory_gb": round(int(sysctl("hw.memsize") or 0) / 2 ** 30), "macos": platform.mac_ver()[0],
+            "python": platform.python_version(), "date": iso(now())}
+
+
+def bench_engine(pdf, n, quick):
+    """The Swift helper times every stage itself (B command) and checks every PNG decodes pixel-exact."""
+    r = PageRenderer(workers=1)
+    if not r.available():
+        die("The native renderer isn't available here (it needs macOS with swiftc).")
+    count = 12 if quick else 48
+    pages = sorted({max(1, min(n, round(1 + i * (n - 1) / (count - 1)))) for i in range(count)})
+    rounds = 1 if quick else 3
+    best = {}
+    for rnd in range(rounds):
+        for i in range(0, len(pages), 8):
+            chunk = pages[i:i + 8]
+            body, _ = r._call(f"B\t{pdf}\t{BENCH_W}\t{BENCH_H}\t{','.join(map(str, chunk))}\t8")
+            d = json.loads(body)
+            for row in d["rows"]:
+                prev = best.get(row["page"])
+                if prev is None:
+                    best[row["page"]] = row
+                else:                                    # best of N rounds for timings; sizes are identical
+                    for k_, v in row.items():
+                        if k_.endswith("_ms") and isinstance(v, (int, float)):
+                            prev[k_] = min(prev[k_], v)
+            print(DIM(f"    engine: round {rnd + 1}/{rounds}, {min(i + 8, len(pages))}/{len(pages)} pages"), end="\r")
+    print(" " * 60, end="\r")
+    rows = list(best.values())
+    text = [x for x in rows if not x["color"] and x["midtones"] < 0.12]
+    col = lambda k, rs=None: [x[k] for x in (rs if rs is not None else text) if k in x]
+    out = {"pages": len(rows), "text_pages": len(text), "rounds": rounds, "box": [BENCH_W, BENCH_H],
+           "page_px": [text[0]["w"], text[0]["h"]] if text else None, "neon": d.get("neon"), "cores": d.get("cores")}
+    out["codecs"] = {name: {"bytes": _stats(col(name + "_bytes")), "ms": _stats(col(name + "_ms"))}
+                     for name in ("png4_neon_n", "jpeg_color", "jpeg_gray", "heic", "png_gray8", "preview")}
+    out["stages"] = {k_: _stats(col(k_)) for k_ in (
+        "draw_ms", "color_check_ms", "draw_rgb_ms", "gray_color_pass_ms", "midtones_ms",
+        "png4_scalar_1_pack_ms", "png4_neon_1_pack_ms", "png4_neon_n_pack_ms",
+        "png4_neon_1_deflate_ms", "png4_neon_n_deflate_ms",
+        "png4_scalar_1_ms", "png4_neon_1_ms", "png4_neon_n_ms", "first_render_ms", "repeat_render_ms")}
+    out["scaling"] = {c: _stats(col(f"scale_{c}_ms")) for c in (1, 2, 4, 8)}
+    out["mismatched_pixels"] = sum(x.get(k_, 0) for x in rows for k_ in x if k_.endswith("mismatched_pixels"))
+    out["verified_pixels"] = sum(x["w"] * x["h"] * 3 for x in rows)
+    return out
+
+
+def bench_server(quick):
+    """Start a private world server and measure it from the outside, over HTTP on loopback."""
+    import http.client
+    import queue
+    import socket
+    import threading as th
+    with socket.socket() as s_:
+        s_.bind(("127.0.0.1", 0))
+        port = s_.getsockname()[1]
+    for d_ in PAGE_CACHE.glob(f"*/{BENCH_W}x{BENCH_H}-*"):
+        shutil.rmtree(d_, ignore_errors=True)
+
+    def start():
+        proc = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "world", "--no-open", "--port", str(port)],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=ROOT)
+        for _ in range(600):
+            try:
+                c = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                c.request("GET", "/api/book?key=main")
+                if json.loads(c.getresponse().read()).get("native"):
+                    break
+            except (OSError, ValueError):
+                pass
+            time.sleep(0.1)
+        for key in ["main"] + list(_BOOK.side):           # wait until every book is indexed and the helpers are warm
+            try:
+                c0 = http.client.HTTPConnection("127.0.0.1", port, timeout=60)
+                c0.request("GET", f"/api/book?key={key}")
+                c0.getresponse().read()
+            except OSError:
+                pass
+        time.sleep(3)
+        return proc
+
+    def stop(proc):
+        proc.send_signal(2)
+        try:
+            proc.wait(10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+    import time
+    res = {}
+    proc = start()
+    c = http.client.HTTPConnection("127.0.0.1", port)
+    c.request("GET", "/read")
+    token = re.search(r'const TOKEN = "([0-9a-f]+)"', c.getresponse().read().decode()).group(1)
+    n = json.loads(_get(c, "/api/book?key=main")[1])["n"]
+    rnd = random.Random(42)
+    m = 20 if quick else 60
+    pages = rnd.sample(range(1, n + 1), min(m, n))
+    W, H = BENCH_W, BENCH_H
+
+    # 1. pages nobody has drawn yet (ahead=0 turns off drawing ahead, so each one really is cold)
+    cold, cold_bytes, kinds = [], [], defaultdict(int)
+    for pg in pages:
+        t, body, mime = _get(c, f"/page/main/{pg}?w={W}&h={H}&v=b&ahead=0", mime=True)
+        cold.append(t)
+        cold_bytes.append(len(body))
+        kinds[mime] += 1
+    res["cold_page"] = _stats(cold)
+    res["page_bytes"] = _stats(cold_bytes)
+    res["page_types"] = dict(kinds)
+    pv = [_get(c, f"/page/main/{pg}?w={W // 4}&h={H // 4}&v=b&lq=1&ahead=0")[0] for pg in rnd.sample(range(1, n + 1), min(m, n))]
+    res["cold_preview"] = _stats(pv)
+
+    # 2. pages already in memory, over one keep-alive connection
+    hot = [_get(c, f"/page/main/{pages[i % 10]}?w={W}&h={H}&v=b&ahead=0")[0] for i in range(300 if quick else 1000)]
+    res["memory_hit"] = _stats(hot)
+
+    # 3. the quest state the reader and map load, compressed and not
+    zs = [_get(c, "/api/state", gzip_=True)[0] for _ in range(30)]
+    plain = len(_get(c, "/api/state")[1])
+    zipped = len(_get(c, "/api/state", gzip_=True, raw=True)[1])
+    res["state"] = {"ms": _stats(zs), "bytes_plain": plain, "bytes_gzip": zipped}
+
+    # 4. "Open the book": push → reader receives it → reader acknowledges → sharp page fetched
+    got = queue.Queue()
+    ready = th.Event()
+
+    def reader():
+        sc = http.client.HTTPConnection("127.0.0.1", port, timeout=600)
+        sc.request("GET", f"/api/events?w={W}&h={H}")
+        r_ = sc.getresponse()
+        kc = http.client.HTTPConnection("127.0.0.1", port)
+        cur = {}
+        while True:
+            line = r_.fp.readline()
+            if not line:
+                return
+            line = line.decode().rstrip("\n")
+            if line.startswith("event:"):
+                cur["e"] = line[6:].strip()
+            elif line.startswith("data:"):
+                cur["d"] = json.loads(line[5:])
+            elif line == "" and cur:
+                t_ev = time.perf_counter()
+                e, d = cur.get("e"), cur.get("d")
+                cur = {}
+                if e == "hello":
+                    ready.set()
+                elif e == "nav":
+                    kc.request("POST", "/api/ack", json.dumps({"seq": d["seq"]}),
+                               {"Content-Type": "application/json", "X-Quest-Token": token})
+                    kc.getresponse().read()
+                    kc.request("GET", f"/page/{d['key']}/{d['page']}?w={W}&h={H}&v=b&ahead=0")
+                    kc.getresponse().read()
+                    got.put((d["seq"], t_ev, time.perf_counter(), bool(d.get("preview"))))
+    th.Thread(target=reader, daemon=True).start()
+    ready.wait(10)
+    pushes = defaultdict(list)
+    for i in range(30 if quick else 100):
+        warm = i % 2 == 0
+        pg = rnd.randint(1, n)
+        if warm:
+            _post(c, token, "/api/warm", {"key": "main", "page": pg})
+            time.sleep(0.15)                              # the hover comes a moment before the click
+        t0 = time.perf_counter()
+        st_, body = _post(c, token, "/api/pdf", {"key": "main", "page": pg, "bench": True})
+        t1 = time.perf_counter()
+        if st_ != 200:
+            continue
+        seq, t_ev, t_full, had_pv = got.get(timeout=10)
+        tag = "warm" if warm else "cold"
+        pushes[f"{tag}_receive"].append((t_ev - t0) * 1000)
+        pushes[f"{tag}_ack"].append((t1 - t0) * 1000)
+        pushes[f"{tag}_sharp_page"].append((t_full - t0) * 1000)
+        pushes[f"{tag}_preview_inline"].append(1.0 if had_pv else 0.0)
+    res["push"] = {k_: (_stats(v) if not k_.endswith("inline") else sum(v) / max(1, len(v))) for k_, v in pushes.items()}
+
+    # 5. throughput: 8 clients fetching drawn pages as fast as they can
+    stop_at = time.perf_counter() + (2 if quick else 5)
+    counts, nbytes = [0] * 8, [0] * 8
+
+    def hammer(i):
+        hc = http.client.HTTPConnection("127.0.0.1", port)
+        while time.perf_counter() < stop_at:
+            _, b = _get(hc, f"/page/main/{pages[(i * 7 + counts[i]) % 10]}?w={W}&h={H}&v=b&ahead=0")
+            counts[i] += 1
+            nbytes[i] += len(b)
+    t0 = time.perf_counter()
+    ts = [th.Thread(target=hammer, args=(i,)) for i in range(8)]
+    [t_.start() for t_ in ts]
+    [t_.join() for t_ in ts]
+    el = time.perf_counter() - t0
+    res["throughput"] = {"clients": 8, "requests_per_s": sum(counts) / el, "mb_per_s": sum(nbytes) / el / 1e6}
+
+    # 6. the whole book, drawn in the background at the reader's size
+    fill_box = (W - 16, H - 16)
+    t0 = time.perf_counter()
+    _get(c, f"/page/main/1?w={fill_box[0]}&h={fill_box[1]}&v=b")
+    filled, deadline = 0, time.time() + (60 if quick else 300)
+    while time.time() < deadline:
+        filled = sum(1 for d_ in PAGE_CACHE.glob(f"*/{fill_box[0]}x{fill_box[1]}-auto") for f in d_.iterdir() if f.suffix in (".png", ".jpg"))
+        if filled >= n:
+            break
+        time.sleep(0.5)
+    el = time.perf_counter() - t0
+    disk = sum(f.stat().st_size for d_ in PAGE_CACHE.glob(f"*/{fill_box[0]}x{fill_box[1]}-auto") for f in d_.iterdir())
+    res["whole_book"] = {"pages": n, "filled": filled, "seconds": el, "pages_per_s": filled / el if el else None, "disk_mb": disk / 1e6}
+    try:
+        rss = int(subprocess.run(["ps", "-o", "rss=", "-p", str(proc.pid)], capture_output=True, text=True).stdout.strip() or 0)
+        helpers = subprocess.run(["pgrep", "-P", str(proc.pid)], capture_output=True, text=True).stdout.split()
+        hrss = sum(int(subprocess.run(["ps", "-o", "rss=", "-p", h], capture_output=True, text=True).stdout.strip() or 0) for h in helpers)
+        res["memory_mb"] = {"server": rss / 1024, "helpers": hrss / 1024, "helper_count": len(helpers)}
+    except (OSError, ValueError):
+        pass
+    stop(proc)
+
+    # 7. after a restart: pages come back from the disk cache
+    proc = start()
+    c = http.client.HTTPConnection("127.0.0.1", port)
+    disk_hits = [_get(c, f"/page/main/{pg}?w={W}&h={H}&v=b&ahead=0")[0] for pg in pages]
+    res["disk_hit_after_restart"] = _stats(disk_hits)
+    stop(proc)
+    for d_ in list(PAGE_CACHE.glob(f"*/{W}x{H}-*")) + list(PAGE_CACHE.glob(f"*/{fill_box[0]}x{fill_box[1]}-*")) + \
+            list(PAGE_CACHE.glob(f"*/{W // 4}x{H // 4}-*")):
+        shutil.rmtree(d_, ignore_errors=True)
+    return res
+
+
+def _get(c, path, gzip_=False, raw=False, mime=False):
+    import time
+    hdr = {"Accept-Encoding": "gzip"} if gzip_ else {}
+    t = time.perf_counter()
+    c.request("GET", path, headers=hdr)
+    r = c.getresponse()
+    body = r.read()
+    ms = (time.perf_counter() - t) * 1000
+    if gzip_ and not raw and r.getheader("Content-Encoding") == "gzip":
+        import gzip
+        body = gzip.decompress(body)
+    return (ms, body, r.getheader("Content-Type")) if mime else (ms, body)
+
+
+def _post(c, token, path, body):
+    c.request("POST", path, json.dumps(body), {"Content-Type": "application/json", "X-Quest-Token": token})
+    r = c.getresponse()
+    return r.status, r.read()
+
+
+def bench_device():
+    """Timings readers reported from real devices (tap "Mac" in the reader to watch them live)."""
+    if not PERF_FILE.exists():
+        return {}
+    try:
+        data = json.loads(PERF_FILE.read_text())
+    except ValueError:
+        return {}
+    groups = defaultdict(list)
+    for e in data:
+        if e.get("kind") in DEVICE_KINDS and isinstance(e.get("ms"), (int, float)):
+            groups[(e.get("device", "?"), e["kind"])].append(e["ms"])
+    out = defaultdict(dict)
+    for (dev, kind), xs in groups.items():
+        out[dev][kind] = _stats(xs)
+    return dict(out)
+
+
+# What the device table shows: latencies only (a Pencil stroke's duration is how long you drew, not a delay).
+DEVICE_KINDS = {
+    "turn": "Page turn, swipe → new page on screen",
+    "jump": "Jump to a page (slider, link, book switch)",
+    "push_preview": "Mac click → preview on the iPad's screen",
+    "push_sharp": "Mac click → sharp page on the iPad's screen",
+    "preview_shown": "Preview on screen while the page loads",
+    "hint_ready": "Mac hover → page fetched and decoded ahead",
+    "scroll_page": "Scroll mode: page appears",
+    "scroll_preview": "Scroll mode: preview appears",
+    "fetch_page": "Fetch a page over Wi-Fi",
+    "fetch_preview": "Fetch a preview over Wi-Fi",
+    "decode": "Decode a page image",
+    "transcribe": "Handwriting → text (Vision, on the Mac)",
+    "push_ack_rtt": "Push → acknowledgement back (Wi-Fi round trip)",
+}
+
+
+def cmd_bench(book, args):
+    import time  # noqa: F401
+    quick = "--quick" in args
+    pdf = book.pdf()
+    if not pdf:
+        die("No PDF to benchmark with.")
+    info = machine_info()
+    print(f"\n  ⏱  {B('Book Quest benchmark')}  {DIM(info['cpu'] + ' · ' + str(info['cores']) + ' cores · macOS ' + info['macos'])}")
+    print(DIM(f"     book: {book.short} · {'quick run' if quick else 'full run (a few minutes)'}\n"))
+    r = PageRenderer(workers=1)
+    if not r.available():
+        die("The native renderer isn't available here (it needs macOS with swiftc).")
+    n = r.info(pdf)["n"]
+    print("  1/3 the rendering engine, inside the Swift helper…")
+    engine = bench_engine(pdf, n, quick)
+    print("  2/3 the server, end to end over HTTP…")
+    server = bench_server(quick)
+    device = bench_device()
+    results = {"machine": info, "book": {"title": book.short, "pages": n}, "engine": engine, "server": server, "device": device}
+    BENCH_DIR.mkdir(exist_ok=True)
+    (BENCH_DIR / "results.json").write_text(json.dumps(results, indent=1) + "\n")
+    md = bench_markdown(results)
+    (BENCH_DIR / "RESULTS.md").write_text(md)
+    print("  3/3 done.\n")
+    print(textwrap.indent(md, "  "))
+    print(DIM(f"  Saved {rel(BENCH_DIR / 'RESULTS.md')} and {rel(BENCH_DIR / 'results.json')}.\n"))
+
+
+def bench_markdown(R_):
+    e, s, m = R_["engine"], R_["server"], R_["machine"]
+    L = [f"# Book Quest · benchmark results", "",
+         f"{m['cpu']} ({m['cores']} cores: {m['performance_cores']} performance + {m['efficiency_cores']} efficiency) · "
+         f"{m['memory_gb']} GB · macOS {m['macos']} · Python {m['python']} · {m['date'][:10]}", "",
+         f"Book: *{R_['book']['title']}*, {R_['book']['pages']} pages. Pages are drawn for an iPad-sized box of "
+         f"{e['box'][0]}×{e['box'][1]} px ({e['page_px'][0]}×{e['page_px'][1]} px per page). Engine timings are the best of "
+         f"{e['rounds']} round(s) per page; percentiles are across {e['text_pages']} text pages.", ""]
+    jc = e["codecs"]["jpeg_color"]["bytes"]["p50"]
+    L += ["## Codecs: one page, five ways", "", "| Encoder | Size p50 | Size p95 | vs JPEG | Encode p50 | Encode p95 |",
+          "|---|---:|---:|---:|---:|---:|"]
+    names = {"png4_neon_n": "**16-shade PNG (ours: NEON + 8-core deflate)**", "jpeg_color": "JPEG q0.8, color (ImageIO)",
+             "jpeg_gray": "JPEG q0.8, gray (ImageIO)", "heic": "HEIC q0.6 (ImageIO)", "png_gray8": "PNG 8-bit gray (ImageIO)",
+             "preview": "Preview: ¼-size JPEG q0.5"}
+    for k_, label in names.items():
+        c_ = e["codecs"][k_]
+        L.append(f"| {label} | {_f(c_['bytes']['p50'], 'KB')} | {_f(c_['bytes']['p95'], 'KB')} | "
+                 f"{c_['bytes']['p50'] / jc:.2f}× | {_f(c_['ms']['p50'])} | {_f(c_['ms']['p95'])} |")
+    st_ = e["stages"]
+    L += ["", f"Every PNG was decoded again with ImageIO and compared with the reference quantizer: "
+              f"**{e['mismatched_pixels']} mismatched pixels** out of {e['verified_pixels']:,} checked.", "",
+          "## Inside the encoder", "", "| Stage | p50 | p95 |", "|---|---:|---:|"]
+    for k_, label in [("draw_ms", "PDFKit draw, grayscale"), ("color_check_ms", "Separate color check (old: a second draw)"),
+                      ("draw_rgb_ms", "PDFKit draw, color (new: once)"), ("gray_color_pass_ms", "NEON pass: gray + color detection"),
+                      ("png4_scalar_1_pack_ms", "Quantize + pack, scalar C"), ("png4_neon_1_pack_ms", "Quantize + pack, NEON, 1 core"),
+                      ("png4_neon_n_pack_ms", "Quantize + pack, NEON, 8 cores"), ("png4_neon_1_deflate_ms", "Deflate, 1 core"),
+                      ("png4_neon_n_deflate_ms", "Deflate, 8 strips in parallel"), ("png4_scalar_1_ms", "PNG encode, scalar, 1 core"),
+                      ("png4_neon_n_ms", "**PNG encode, NEON, 8 cores**"), ("first_render_ms", "**Whole page, first time (draw → PNG)**"),
+                      ("repeat_render_ms", "Whole page, colors already known")]:
+        L.append(f"| {label} | {_f(st_[k_]['p50'])} | {_f(st_[k_]['p95'])} |")
+    L += ["", "| Compression strips | 1 | 2 | 4 | 8 |", "|---|---:|---:|---:|---:|",
+          "| PNG encode p50 | " + " | ".join(_f(e["scaling"][c]["p50"]) for c in (1, 2, 4, 8)) + " |", ""]
+    L += ["## Server, end to end (HTTP over loopback)", "", "| Path | p50 | p95 | p99 |", "|---|---:|---:|---:|"]
+    for k_, label in [("memory_hit", "Page from memory"), ("disk_hit_after_restart", "Page from disk, right after a restart"),
+                      ("cold_page", "Page never drawn before"), ("cold_preview", "Preview never drawn before")]:
+        x = s[k_]
+        L.append(f"| {label} | {_f(x['p50'])} | {_f(x['p95'])} | {_f(x['p99'])} |")
+    p_ = s["push"]
+    for k_, label in [("warm_receive", "Push → reader receives it (page drawn ahead)"), ("warm_ack", "Push → Mac gets the acknowledgement"),
+                      ("warm_sharp_page", "Push → sharp page delivered (drawn ahead)"), ("cold_receive", "Push → reader receives it (cold)"),
+                      ("cold_sharp_page", "Push → sharp page delivered (cold)")]:
+        if k_ in p_:
+            L.append(f"| {label} | {_f(p_[k_]['p50'])} | {_f(p_[k_]['p95'])} | {_f(p_[k_]['p99'])} |")
+    L.append(f"| Quest state (gzip {s['state']['bytes_plain'] // 1024} KB → {s['state']['bytes_gzip'] // 1024} KB) | "
+             f"{_f(s['state']['ms']['p50'])} | {_f(s['state']['ms']['p95'])} | {_f(s['state']['ms']['p99'])} |")
+    t_, wb = s["throughput"], s["whole_book"]
+    L += ["", f"- **Throughput:** {t_['requests_per_s']:,.0f} page requests/s ({t_['mb_per_s']:,.0f} MB/s) with {t_['clients']} clients.",
+          f"- **Whole book in the background:** {wb['filled']}/{wb['pages']} pages in {wb['seconds']:.1f} s "
+          f"({wb['pages_per_s']:.1f} pages/s on one core), {wb['disk_mb']:.0f} MB on disk.",
+          f"- **Page sizes over the wire:** {_f(s['page_bytes']['p50'], 'KB')} p50, {_f(s['page_bytes']['p95'], 'KB')} p95 "
+          f"({', '.join(f'{v} {k_}' for k_, v in s['page_types'].items())})."]
+    if "memory_mb" in s:
+        mm = s["memory_mb"]
+        L.append(f"- **Memory:** server {mm['server']:.0f} MB with the whole book cached; {mm['helper_count']} helpers {mm['helpers']:.0f} MB.")
+    if R_["device"]:
+        L += ["", "## On real devices (reported by the reader)", "", "| Device | Measurement | n | p50 | p95 | p99 |",
+              "|---|---|---:|---:|---:|---:|"]
+        order = list(DEVICE_KINDS)
+        for dev, kinds in sorted(R_["device"].items()):
+            for kind, x in sorted(kinds.items(), key=lambda kv: order.index(kv[0]) if kv[0] in order else 99):
+                L.append(f"| {dev} | {DEVICE_KINDS.get(kind, kind)} | {x['n']} | {_f(x['p50'])} | {_f(x['p95'])} | {_f(x['p99'])} |")
+    else:
+        L += ["", "_No device timings yet: open the reader on an iPad with `./quest world --ipad`, read a while, then run this again._"]
+    L.append("")
+    return "\n".join(L)
 
 
 HELP = f"""
@@ -2950,6 +3810,7 @@ HELP = f"""
     ./quest log "text"           add a line to journal.md
     ./quest undo [id]            undo the last action (or the last one for an id)
     ./quest goal 150             change the daily XP goal (default {DEFAULT_GOAL})
+    ./quest bench [--quick]      measure the renderer, server and devices; writes bench/RESULTS.md
 
   C/C++ flags: --asan (AddressSanitizer+UBSan), --tsan (ThreadSanitizer), --force (skip the compile check)
 """
@@ -2966,7 +3827,7 @@ COMMANDS = {
     "boss": cmd_boss, "start": cmd_start, "stop": cmd_stop, "log": cmd_log,
     "review": cmd_review, "ch": cmd_ch, "chapter": cmd_ch, "map": cmd_map,
     "badges": cmd_badges, "stats": cmd_stats, "undo": cmd_undo, "goal": cmd_goal,
-    "init": cmd_init, "pdf": cmd_pdf, "side": cmd_side, "world": cmd_world, "w": cmd_world, "help": cmd_help, "-h": cmd_help, "--help": cmd_help,
+    "init": cmd_init, "bench": cmd_bench, "pdf": cmd_pdf, "side": cmd_side, "world": cmd_world, "w": cmd_world, "help": cmd_help, "-h": cmd_help, "--help": cmd_help,
 }
 
 

@@ -5,6 +5,9 @@ __pycache__/
 .quest/*.tmp
 .quest/pair.key
 .quest/.bin/
+.quest/.cache/
+.quest/perf.json
+.quest/ink/
 .DS_Store
 
 # your copies of the books are copyrighted: never commit them

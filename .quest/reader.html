@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Quest Reader">
 <meta name="theme-color" content="#0a0d16">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Quest Reader</title>
 <style>
 :root{
@@ -25,9 +27,38 @@ img,canvas{-webkit-user-drag:none}
 /* page mode: one page at a time, fitted to the screen */
 #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;touch-action:pinch-zoom}
 html.scroll #stage{display:none}
+/* while the Pencil is near (hover or touch), Safari must not treat it as a gesture on the page */
+body.pen #stage{touch-action:none}
 .sheet{background:#fff;border-radius:3px;box-shadow:0 12px 50px rgba(0,0,0,.65);display:block}
-.sheet.in-next{animation:inR .18s ease-out}
-.sheet.in-prev{animation:inL .18s ease-out}
+.sheet.in-next,.leaf.in-next{animation:inR .18s ease-out}
+.sheet.in-prev,.leaf.in-prev{animation:inL .18s ease-out}
+.leaf{position:relative;flex:none;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.leaf>.sheet{width:100%!important;height:100%!important}
+.leaf>canvas,#roll .pg>canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+/* Pencil tools: a slim column on the left, shown once the Pencil touches a page (or with ✏️) */
+#tools{position:fixed;left:10px;top:50%;z-index:6;transform:translate(-140%,-50%);transition:transform .25s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;gap:8px;padding:10px 8px;background:var(--bar);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--line-2);border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+body.inking #tools{transform:translate(0,-50%)}
+#tools button{width:38px;height:38px;border-radius:50%;border:2px solid transparent;background:rgba(255,255,255,.06);color:var(--text);font-size:17px;display:grid;place-items:center;cursor:pointer;padding:0}
+#tools .sw{background:var(--c);border-color:rgba(255,255,255,.25)}
+#tools .sw.hl{border-radius:10px;opacity:.85}
+#tools button.on{border-color:var(--gold-2);box-shadow:0 0 0 3px rgba(246,220,147,.25)}
+#tools hr{border:0;border-top:1px solid var(--line-2);margin:2px 4px}
+#nib{position:fixed;z-index:7;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .15s;box-shadow:0 0 0 1.5px rgba(255,255,255,.8)}
+#nib.on{opacity:.9}
+/* chapter notes: slides in on the right (landscape) or up from the bottom (portrait) */
+#notes{position:fixed;z-index:4;display:flex;flex-direction:column;gap:10px;background:rgba(12,16,27,.97);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:transform .28s cubic-bezier(.2,.8,.2,1);padding:calc(env(safe-area-inset-top) + 70px) 16px calc(env(safe-area-inset-bottom) + 78px)}
+@media (orientation:landscape){ #notes{top:0;right:0;bottom:0;width:min(440px,42vw);border-left:1px solid var(--line-2);transform:translateX(105%)} body.notes-open #stage{right:min(440px,42vw)} }
+@media (orientation:portrait){ #notes{left:0;right:0;bottom:0;height:50vh;border-top:1px solid var(--line-2);transform:translateY(105%);padding-top:14px} body.notes-open #stage{bottom:50vh} }
+body.notes-open #notes{transform:none}
+#notes .nh{display:flex;align-items:center;gap:10px}
+#notes .nk{font:700 11px var(--ui);letter-spacing:.14em;color:var(--gold)}
+#n-title{font-weight:650;font-size:15px;line-height:1.3}
+#n-state{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+#notes .ntools{display:flex;gap:6px;flex-wrap:wrap}
+#notes .ntools .btn{padding:6px 10px;font-size:13px}
+#n-text{flex:1;min-height:0;resize:none;width:100%;border-radius:12px;border:1px solid var(--line-2);background:rgba(255,255,255,.04);color:var(--text);padding:12px 14px;font:16px/1.55 var(--ui);-webkit-user-select:text;user-select:text;outline:none}
+#n-text:focus{border-color:rgba(230,192,104,.5)}
+#notes .nfoot{font-size:12px;color:var(--muted)}
 @keyframes inR{from{opacity:.5;transform:translateX(22px)}}
 @keyframes inL{from{opacity:.5;transform:translateX(-22px)}}
 
@@ -60,6 +91,8 @@ select{background:rgba(255,255,255,.06);border:1px solid var(--line-2);border-ra
 #link.on i{background:var(--teal);box-shadow:0 0 8px var(--teal)}
 #slider{flex:1;accent-color:var(--gold);height:28px}
 #pg{min-width:120px;font-variant-numeric:tabular-nums}
+#hud{position:fixed;right:10px;top:calc(env(safe-area-inset-top) + 70px);z-index:9;background:rgba(6,9,16,.9);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:12px/1.45 ui-monospace,Menlo,monospace;color:#cfe;white-space:pre;pointer-events:none;display:none}
+body.hud #hud{display:block}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 76px);transform:translateX(-50%);z-index:9;background:rgba(18,24,40,.97);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-size:14.5px;box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
 #loading{position:fixed;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:radial-gradient(circle at 50% 40%,#13203a,#060912)}
@@ -70,6 +103,7 @@ select{background:rgba(255,255,255,.06);border:1px solid var(--line-2);border-ra
 .edge.l{left:4px}.edge.r{right:4px}
 body.hide .edge,html.scroll .edge{opacity:0}
 @media (max-width:700px){ select{max-width:150px} #quest{flex-basis:100%;order:3} #pg{min-width:90px} }
+@media (prefers-reduced-motion: reduce){ *,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important} }
 </style>
 </head>
 <body>
@@ -80,6 +114,8 @@ body.hide .edge,html.scroll .edge{opacity:0}
   <select id="book" aria-label="Book"></select>
   <div id="quest"></div>
   <div class="seg" role="group" aria-label="Reading mode"><button data-mode="page">📄 Pages</button><button data-mode="scroll">📜 Scroll</button></div>
+  <button class="btn ghost" id="b-ink" title="Pencil tools">✏️</button>
+  <button class="btn ghost" id="b-notes" title="Chapter notes">📝</button>
   <span id="link" title="When lit, clicking “Open the book” on your Mac's map turns this page"><i></i>Mac</span>
   <a class="btn ghost" href="/" title="World map">🗺️</a>
 </div>
@@ -89,7 +125,32 @@ body.hide .edge,html.scroll .edge{opacity:0}
   <button class="btn ghost" id="next" aria-label="Next page">›</button>
   <button class="btn ghost" id="pg" title="Go to page">…</button>
 </div>
+<div id="tools" aria-label="Pencil tools">
+  <button class="sw on" data-tool="pen" data-c="#1d2433" style="--c:#1d2433" title="Black pen"></button>
+  <button class="sw" data-tool="pen" data-c="#2457c5" style="--c:#2457c5" title="Blue pen"></button>
+  <button class="sw" data-tool="pen" data-c="#c0392b" style="--c:#c0392b" title="Red pen"></button>
+  <button class="sw hl" data-tool="hl" data-c="#ffd84a" style="--c:#ffd84a" title="Highlighter"></button>
+  <button data-tool="erase" title="Eraser">⌫</button>
+  <hr>
+  <button id="t-undo" title="Undo">↶</button>
+  <button id="t-finger" title="Draw with your finger too">☝︎</button>
+  <button id="t-notes" title="Chapter notes">📝</button>
+  <button id="t-close" title="Hide tools">✕</button>
+</div>
+<div id="nib"></div>
+<aside id="notes" aria-label="Chapter notes">
+  <div class="nh"><div><div class="nk">NOTES</div><div id="n-title">…</div></div><span id="n-state"></span><button class="btn ghost" id="n-close" aria-label="Close notes">✕</button></div>
+  <div class="ntools">
+    <button class="btn ghost" data-ins="card">＋ Flashcard</button>
+    <button class="btn ghost" data-ins="h">＃ Heading</button>
+    <button class="btn ghost" data-ins="li">• Bullet</button>
+    <button class="btn" id="n-ink">✍️ Page handwriting → text</button>
+  </div>
+  <textarea id="n-text" placeholder="Type, or write with Apple Pencil (Scribble turns it into text)…" spellcheck="true"></textarea>
+  <div class="nfoot" id="n-foot">Saves to this chapter's notes.md on your Mac as you write · lines starting with Q: and A: become flashcards</div>
+</aside>
 <div id="toast" role="status"></div>
+<div id="hud" aria-hidden="true"></div>
 <div id="loading"><div class="t">QUEST READER</div><div class="s" id="load-s">opening the book…</div></div>
 
 <script>
@@ -98,7 +159,7 @@ const TOKEN = "__QUEST_TOKEN__";
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const R = {src:null, key:null, n:1, labels:null, sizes:null, tops:[], page:1, mode:"page",
+const R = {src:null, key:null, n:1, labels:null, sizes:null, tops:[], page:1, mode:"page", shown:null, got:new Set(), ready:new Set(),
            st:null, seq:-1, focus:null, ticket:0, es:null, box:null, dpr:Math.min(window.devicePixelRatio || 1, 3)};
 let store = {};
 try { store = JSON.parse(localStorage.getItem("quest-reader") || "{}"); } catch (e) { store = {}; }
@@ -106,6 +167,48 @@ let saveTimer;
 const save = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem("quest-reader", JSON.stringify(store)); } catch (e) {} }, 300); };
 // layout viewport: unlike innerWidth it doesn't change while you pinch-zoom
 const vw = () => document.documentElement.clientWidth, vh = () => document.documentElement.clientHeight;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+/* telemetry: real timings from this device. Batched every 10 s to the Mac (.quest/perf.json) for
+   ./quest bench; tap "Mac" in the top bar for a live overlay. "ms" is time until the next frame is
+   actually on screen (two animation frames after the change); "dom_ms" is until the page was swapped in. */
+const PERF = {buf:[], recent:{}};
+function perf(kind, ms, extra){
+  const e = Object.assign({kind, ms:+ms.toFixed(2), at:Date.now(), mode:R.mode}, extra || {});
+  PERF.buf.push(e);
+  const r = PERF.recent[kind] = PERF.recent[kind] || [];
+  r.push(e.ms); if (r.length > 60) r.shift();
+  if (document.body.classList.contains("hud")) drawHud();
+}
+const onScreen = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(performance.now()))));
+function pct(a, q){ const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.min(s.length - 1, Math.floor(q * s.length))] : 0; }
+function drawHud(){
+  const rows = Object.entries(PERF.recent).filter(([, v]) => v.length).sort();
+  $("#hud").textContent = "last 60 · p50 / p95 ms\n" + rows.map(([k, v]) => `${k.padEnd(14)} ${pct(v, .5).toFixed(1).padStart(6)} ${pct(v, .95).toFixed(1).padStart(7)}  n=${v.length}`).join("\n");
+}
+// Previews only help when the sharp page is slow to arrive. Once recent pages land in under 60 ms
+// (the Mac has the book drawn and the Wi-Fi is quick), the reader stops asking for them.
+function fastNet(){
+  const r = (PERF.recent.fetch_page || []).slice(-8);
+  return r.length >= 4 && pct(r, .5) < 60;
+}
+async function flushPerf(){
+  if (!PERF.buf.length) return;
+  const events = PERF.buf.splice(0, 2000);
+  try { await api("/api/perf", {ua:navigator.userAgent, dpr:R.dpr, vw:vw(), vh:vh(), events}); }
+  catch (e){ if (PERF.buf.length < 5000) PERF.buf.unshift(...events); }
+}
+setInterval(flushPerf, 10000);
+try {
+  performance.setResourceTimingBufferSize && performance.setResourceTimingBufferSize(2000);
+  new PerformanceObserver(list => {
+    for (const e of list.getEntries()){
+      if (!e.name.includes("/page/")) continue;
+      perf(e.name.includes("lq=1") ? "fetch_preview" : "fetch_page", e.duration,
+           {ttfb:+(e.responseStart - e.requestStart).toFixed(2), kb:Math.round((e.encodedBodySize || 0) / 1024), cached:e.transferSize === 0});
+    }
+  }).observe({type:"resource", buffered:true});
+} catch (e) {}
 
 async function api(path, body){
   const opt = body ? {method:"POST", headers:{"Content-Type":"application/json", "X-Quest-Token":TOKEN}, body:JSON.stringify(body)} : {};
@@ -117,10 +220,11 @@ async function api(path, body){
 let toastTimer;
 function toast(html){ const t = $("#toast"); t.innerHTML = html; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3200); }
 function loading(msg){ const l = $("#loading"); if (msg === false){ l.classList.add("gone"); return; } l.classList.remove("gone"); $("#load-s").textContent = msg; }
-function loadScript(src){
+function loadScript(src, integrity){           // pinned versions with Subresource Integrity: a changed file won't run
   return new Promise((ok, bad) => {
     if ([...document.scripts].some(s => s.src === src)) return ok();
-    const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = bad; document.head.appendChild(s);
+    const s = document.createElement("script"); s.src = src; s.integrity = integrity; s.crossOrigin = "anonymous";
+    s.onload = ok; s.onerror = bad; document.head.appendChild(s);
   });
 }
 
@@ -147,18 +251,25 @@ function updateQuest(){
    without that (not a Mac, or no swiftc) the iPad draws them itself with PDF.js */
 function nativeSource(info){
   const key = info.key;
-  const url = (p, w, h) => `/page/${encodeURIComponent(key)}/${p}.jpg?w=${w}&h=${h}&v=${info.v}`;
+  // text pages come back as 16-shade PNGs (a quarter of a JPEG); lq=1 asks for a small quick preview
+  const url = (p, w, h, lq) => `/page/${encodeURIComponent(key)}/${p}?w=${w}&h=${h}&v=${info.v}${lq ? "&lq=1" : ""}`;
   return {
     native:true, n:info.n, labels:info.labels, sizes:info.sizes, url,
-    async element(p, w, h){
+    async element(p, w, h, lq){
       const img = new Image(); img.decoding = "async"; img.alt = ""; img.draggable = false;
-      img.src = url(p, w, h);
+      img.src = url(p, w, h, lq);
       await new Promise((ok, bad) => {
         if (img.complete && img.naturalWidth) return ok();
         img.onload = ok; img.onerror = () => bad(new Error("page didn't load"));
       });
       // decode ahead of time so the swap is instant, but never wait on it for long (it can stall off-screen)
-      if (img.decode) await Promise.race([img.decode().catch(() => {}), new Promise(r => setTimeout(r, 150))]);
+      const t = performance.now();
+      let decoded = false;
+      if (img.decode) await Promise.race([img.decode().then(() => { decoded = true; }, () => {}), wait(150)]);
+      if (!lq){
+        R.got.add(img.src);
+        if (decoded) perf("decode", performance.now() - t, {px:img.naturalWidth * img.naturalHeight});   // only real decodes
+      }
       return img;
     },
     close(){},
@@ -166,8 +277,9 @@ function nativeSource(info){
 }
 async function pdfjsSource(key, ticket){
   loading("loading the PDF reader…");
-  await loadScript(PDFJS + "pdf.min.js");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js";
+  await loadScript(PDFJS + "pdf.min.js", "sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e");
+  const worker = await fetch(PDFJS + "pdf.worker.min.js", {integrity:"sha384-SnzOobpRMLXZ52iJvZm/C0fYw0OQemTXzTjIsdsfMcrCtCEe9qgzxTd3RSklO5x2"});
+  pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(await worker.blob());   // checked, then run from a blob
   const task = pdfjsLib.getDocument({url:`/pdf/${encodeURIComponent(key)}.pdf`});
   let opened = false;                              // the rest of the file keeps streaming in after the book opens
   task.onProgress = ({loaded, total}) => { if (total && !opened && ticket === R.ticket) loading(`downloading ${Math.round(loaded / total * 100)}%`); };
@@ -201,7 +313,7 @@ const label = p => { const l = R.labels && R.labels[p - 1]; return l && l !== St
 async function openBook(key, page){
   const ticket = ++R.ticket;                       // a newer request wins over one still loading
   if (key !== R.key || !R.src){
-    loading("opening the book…");
+    if (!(R.shown && R.shown.key === key)) loading("opening the book…");   // a pushed preview is already up
     let src;
     try {
       const info = await api(`/api/book?key=${encodeURIComponent(key)}`);
@@ -215,6 +327,7 @@ async function openBook(key, page){
     if (R.src) R.src.close();
     sheets.clear();
     Object.assign(R, {src, key, n:src.n, labels:src.labels, sizes:src.sizes});
+    loadInk(key);
     $("#slider").max = R.n; $("#book").value = key;
     if (R.mode === "scroll") buildRoll();
     loading(false);
@@ -236,6 +349,7 @@ function go(p, dir = ""){
 }
 function showPos(){
   const p = R.page;
+  if (NOTES.open) notesFollow();
   $("#slider").value = p;
   $("#pg").textContent = `p.${label(p)} · ${p}/${R.n}`;
   updateQuest();
@@ -249,25 +363,58 @@ const sheets = new Map();
 function sheet(p, b = box()){
   const id = `${R.key}:${p}:${b.w}x${b.h}`;
   if (sheets.has(id)){ const j = sheets.get(id); sheets.delete(id); sheets.set(id, j); return j; }
+  const done = el => { R.ready.add(id); return el; };
   const job = R.src.element(p, b.w, b.h).then(el => {
     el.className = "sheet";
     el.style.width = (el.naturalWidth || el.width) / R.dpr + "px";
     el.style.height = (el.naturalHeight || el.height) / R.dpr + "px";
-    return el;
+    return done(el);
   });
   sheets.set(id, job);
   job.catch(() => sheets.delete(id));
-  while (sheets.size > 8) sheets.delete(sheets.keys().next().value);
+  while (sheets.size > 8){ const old = sheets.keys().next().value; sheets.delete(old); R.ready.delete(old); }
   return job;
 }
+function display(el, p, dir, full){
+  mount(el, R.key, p, dir);
+  R.shown = {key:R.key, page:p, full};
+  const pt = R.pushT;
+  if (pt && pt.page === p && pt.key === R.key && full){
+    R.pushT = null;
+    const dom = performance.now() - pt.t0;
+    onScreen().then(t => perf("push_sharp", t - pt.t0, {dom_ms:+dom.toFixed(2), preview:!!pt.preview}));
+  }
+}
+function fitPreview(el, p, b){                     // a preview is drawn small; show it at the full page's size
+  const [pw, ph] = (R.sizes && R.sizes[p - 1]) || [el.naturalWidth, el.naturalHeight];
+  const k = b.h ? Math.min(b.w / pw, b.h / ph) : b.w / pw;
+  el.className = "sheet";
+  el.style.width = Math.floor(pw * k) / R.dpr + "px"; el.style.height = Math.floor(ph * k) / R.dpr + "px";
+  return el;
+}
 async function showPage(dir){
-  const want = R.page, key = R.key;
+  const want = R.page, key = R.key, b = box(), t0 = performance.now();
+  let usedPreview = false;
+  const full = sheet(want, b);
+  let ready = false;
+  full.then(() => { ready = true; }, () => { ready = true; });
+  if (R.src.native && !fastNet() && !(await Promise.race([full.then(() => true, () => true), wait(8)]))){
+    // not drawn yet: put up a quick low-res version while the sharp page is on its way
+    R.src.element(want, Math.max(16, Math.round(b.w / 4)), Math.round(b.h / 4), true).then(pv => {
+      if (!ready && want === R.page && key === R.key && R.mode === "page"){
+        usedPreview = true;
+        display(fitPreview(pv, want, b), want, dir, false);
+        onScreen().then(t => perf("preview_shown", t - t0));
+      }
+    }).catch(() => {});
+  }
   let el;
-  try { el = await sheet(want); } catch (e){ return; }
+  try { el = await full; } catch (e){ return; }
   if (want !== R.page || key !== R.key || R.mode !== "page") return;
-  el.classList.remove("in-next", "in-prev");
-  if (dir){ void el.offsetWidth; el.classList.add("in-" + dir); }
-  $("#stage").replaceChildren(el);
+  const swapIn = R.shown && R.shown.key === key && R.shown.page === want && !R.shown.full;
+  display(el, want, swapIn ? "" : dir, true);
+  const dom = performance.now() - t0;
+  onScreen().then(t => perf(dir ? "turn" : "jump", t - t0, {dom_ms:+dom.toFixed(2), preview:usedPreview}));
 }
 
 /* scroll mode: placeholders sized from the real page sizes, filled as they come within ~1.5 screens */
@@ -297,15 +444,26 @@ function onSeen(entries){
 function fill(d){
   if (d.dataset.state) return;
   const p = +d.dataset.p, b = box(), key = R.key;
-  if (R.src.native){                                // a plain <img>: Safari fetches and decodes it natively
-    const img = new Image(); img.decoding = "async"; img.alt = ""; img.draggable = false;
-    img.src = R.src.url(p, b.w, 0);
-    d.replaceChildren(img); d.dataset.state = "on";
+  if (R.src.native){                                // plain <img>s: Safari fetches and decodes them natively
+    const mk = u => { const i = new Image(); i.decoding = "async"; i.alt = ""; i.draggable = false; i.src = u; return i; };
+    const fullUrl = R.src.url(p, b.w, 0);
+    if (R.got.has(location.origin + fullUrl) || fastNet()){
+      const t0 = performance.now(), img = mk(fullUrl);
+      img.onload = () => { R.got.add(img.src); perf("scroll_page", performance.now() - t0, {preview:false}); };
+      swapImg(d, img); d.dataset.state = "on"; inkFor(d); return;
+    }
+    const t0 = performance.now();
+    const pv = mk(R.src.url(p, Math.max(16, Math.round(b.w / 4)), 0, true));   // the preview is asked for first
+    const full = mk(fullUrl);
+    swapImg(d, pv); d.dataset.state = "on"; inkFor(d);
+    pv.onload = () => perf("scroll_preview", performance.now() - t0);
+    full.onload = () => { R.got.add(full.src); perf("scroll_page", performance.now() - t0);
+                          if (d.dataset.state === "on" && pv.isConnected) swapImg(d, full); };
     return;
   }
   d.dataset.state = "loading";
   R.src.element(p, b.w, 0).then(el => {
-    if (d.dataset.state === "loading" && R.key === key && d.isConnected){ d.replaceChildren(el); d.dataset.state = "on"; }
+    if (d.dataset.state === "loading" && R.key === key && d.isConnected){ swapImg(d, el); d.dataset.state = "on"; inkFor(d); }
   }).catch(() => { d.dataset.state = ""; });
 }
 let ticking = false, lastY = 0;
@@ -341,11 +499,11 @@ async function sharpen(){
   if (!R.src || !window.visualViewport || visualViewport.scale < 1.4) return;
   const b = box(), W = Math.min(4096, b.w * 2), H = b.h ? Math.min(4096, b.h * 2) : 0, key = R.key;
   if (R.mode === "page"){
-    const cur = $("#stage").firstElementChild, p = R.page;
+    const cur = $("#stage .leaf > .sheet"), p = R.page;
     if (!cur || cur.dataset.hi) return;
     try {
       const el = await R.src.element(p, W, H);
-      if (p !== R.page || key !== R.key || cur.parentNode !== $("#stage")) return;
+      if (p !== R.page || key !== R.key || !cur.isConnected) return;
       el.className = "sheet"; el.dataset.hi = "1"; el.style.width = cur.style.width; el.style.height = cur.style.height;
       cur.replaceWith(el);
     } catch (e) {}
@@ -355,7 +513,7 @@ async function sharpen(){
     const d = $("#roll").children[p - 1];
     if (!d || d.dataset.state !== "on" || d.dataset.hi) continue;
     d.dataset.hi = "1";
-    R.src.element(p, W, H).then(el => { if (d.dataset.hi === "1" && R.key === key) d.replaceChildren(el); }).catch(() => { d.dataset.hi = ""; });
+    R.src.element(p, W, H).then(el => { if (d.dataset.hi === "1" && R.key === key) swapImg(d, el); }).catch(() => { d.dataset.hi = ""; });
   }
 }
 let zoomTimer;
@@ -364,7 +522,10 @@ addEventListener("scroll", () => { if (window.visualViewport && visualViewport.s
 
 /* input: page mode turns on swipes and edge taps; a tap in the middle (or anywhere in scroll mode) shows the bars */
 let down = null;
-document.addEventListener("pointerdown", e => { down = e.target.closest(".bar") ? null : {x:e.clientX, y:e.clientY, t:Date.now(), id:e.pointerId}; });
+document.addEventListener("pointerdown", e => {
+  const ignore = e.pointerType === "pen" || Date.now() < PEN.palmUntil || e.target.closest(".bar, #tools, #notes");
+  down = ignore ? null : {x:e.clientX, y:e.clientY, t:Date.now(), id:e.pointerId};
+});
 document.addEventListener("pointercancel", () => { down = null; });
 document.addEventListener("pointerup", e => {
   if (!down || e.pointerId !== down.id) return;
@@ -380,7 +541,7 @@ document.addEventListener("pointerup", e => {
   }
 });
 document.addEventListener("keydown", e => {
-  if (e.target.closest && e.target.closest("select,input")) return;
+  if (e.target.closest && e.target.closest("select,input,textarea")) return;
   if (e.key === "ArrowRight" || (R.mode === "page" && ["PageDown", " "].includes(e.key))){ e.preventDefault(); next(); }
   else if (e.key === "ArrowLeft" || (R.mode === "page" && e.key === "PageUp")){ e.preventDefault(); prev(); }
 });
@@ -388,6 +549,12 @@ $("#next").onclick = next; $("#prev").onclick = prev;
 document.querySelectorAll(".seg [data-mode]").forEach(b => b.onclick = () => { if (b.dataset.mode !== R.mode) setMode(b.dataset.mode); });
 $("#slider").addEventListener("input", e => { $("#pg").textContent = `p.${label(+e.target.value)} · ${e.target.value}/${R.n}`; });
 $("#slider").addEventListener("change", e => go(+e.target.value));
+let scrubTimer;                                 // while you drag, fetch the page under your thumb
+$("#slider").addEventListener("input", e => {
+  clearTimeout(scrubTimer);
+  const p = +e.target.value;
+  scrubTimer = setTimeout(() => { if (R.mode === "page" && R.src) sheet(p).catch(() => {}); }, 90);
+});
 $("#pg").onclick = () => {
   const v = prompt(`Go to page (printed page number, 1–${R.n} if unsure)`, label(R.page));
   if (!v) return;
@@ -419,6 +586,7 @@ addEventListener("resize", () => {
     if (!R.src) return;
     sheets.clear();
     if (R.mode === "scroll"){ const p = R.page; buildRoll(); go(p); } else showPage();
+    fitLeaf();
   }, 150);
 });
 
@@ -433,11 +601,49 @@ function connect(){
   es.addEventListener("error", () => link(false));
   es.addEventListener("hello", e => { const s = JSON.parse(e.data).seq; if (R.seq < 0) R.seq = s; link(true); });
   es.addEventListener("nav", e => onNav(JSON.parse(e.data)));
+  es.addEventListener("preview", e => showPushed(JSON.parse(e.data)));
+  es.addEventListener("hint", e => onHint(JSON.parse(e.data)));
+}
+// The Mac's pointer is on "Open the book" (or a quest is selected): fetch and decode that page now, so
+// when the click arrives the page only has to be swapped in. The hint also wakes this iPad's Wi-Fi.
+function onHint(n){
+  if (!R.src || n.key !== R.key) return;
+  const t0 = performance.now();
+  if (R.mode === "page") sheet(n.page).then(() => perf("hint_ready", performance.now() - t0)).catch(() => {});
+  else {
+    const u = R.src.url(n.page, box().w, 0);
+    if (R.got.has(location.origin + u)) return;
+    const i = new Image(); i.decoding = "async";
+    i.onload = () => { R.got.add(i.src); perf("hint_ready", performance.now() - t0); };
+    i.src = u;
+  }
+}
+// The Mac sends a small preview with (or right behind) "Open the book", so the page is on screen
+// before the iPad has asked for anything. The sharp page replaces it as soon as it lands.
+function showPushed(n){
+  if (!n.preview || R.mode !== "page" || n.seq !== R.seq) return;
+  const b0 = box();
+  if (n.key === R.key && R.ready.has(`${n.key}:${n.page}:${b0.w}x${b0.h}`)) return;   // already decoded: skip it
+  if (R.shown && R.shown.key === n.key && R.shown.page === n.page && R.shown.full) return;
+  const pv = new Image(); pv.alt = ""; pv.draggable = false;
+  pv.onload = () => {
+    if (n.seq !== R.seq || (R.shown && R.shown.key === n.key && R.shown.page === n.page && R.shown.full)) return;
+    const b = box(), same = n.key === R.key;
+    if (same) fitPreview(pv, n.page, b);
+    else { const k = Math.min(b.w / pv.naturalWidth, (b.h || 1e9) / pv.naturalHeight); pv.className = "sheet";
+           pv.style.width = pv.naturalWidth * k / R.dpr + "px"; pv.style.height = pv.naturalHeight * k / R.dpr + "px"; }
+    mount(pv, n.key, n.page, "");
+    R.shown = {key:n.key, page:n.page, full:false};
+    if (R.pushT && R.pushT.seq === n.seq){ const t0 = R.pushT.t0; R.pushT.preview = true; onScreen().then(t => perf("push_preview", t - t0)); }
+  };
+  pv.src = n.preview;
 }
 async function onNav(n){
   if (n.seq <= R.seq) return;
   R.seq = n.seq;
+  R.pushT = {t0:performance.now(), seq:n.seq, key:n.key, page:n.page};
   api("/api/ack", {seq:n.seq}).catch(() => {});
+  showPushed(n);
   R.focus = n.quest || null;
   await openBook(n.key, n.page);
   document.body.classList.remove("hide"); lastY = scrollY;
@@ -445,11 +651,323 @@ async function onNav(n){
   toast(`📲 From your Mac${q ? ` · <b>${esc(q.id)}</b> ${esc(q.title)}` : ""} · p.${esc(label(n.page))}`);
   loadState().then(updateQuest);
 }
+$("#link").addEventListener("click", () => { document.body.classList.toggle("hud"); drawHud(); });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden){ if (R.es){ R.es.close(); R.es = null; } link(false); return; }
+  if (document.hidden){ flushPerf(); if (R.es){ R.es.close(); R.es = null; } link(false); return; }
   connect(); loadState().then(updateQuest);
 });
 addEventListener("pageshow", e => { if (e.persisted) connect(); });
+
+/* ───────────── Apple Pencil: ink on the page ─────────────
+   Strokes are stored as page-relative points [x, y, pressure] (0..1), so ink lines up at any size, in any
+   orientation and at any zoom. Each Pencil sample is used (getCoalescedEvents, ~240 Hz), the stroke is drawn
+   ahead of the nib where Safari predicts it (getPredictedEvents), width follows pressure and tilt, and palms
+   are ignored. Ink saves to the Mac (.quest/ink/<book>.json) a moment after you lift the Pencil. */
+const INK = {};                                  // book key → {page: [strokes]}
+const PEN = {tool:"pen", color:"#1d2433", active:null, palmUntil:0, finger:false, undo:[], dirty:new Map(), timer:null, hover:null, near:null};
+const WIDTH = {pen:0.0028, hl:0.018};
+const strokesOf = (key, p) => (INK[key] && INK[key][p]) || [];
+function setStrokes(key, p, list){ (INK[key] = INK[key] || {})[p] = list; }
+async function loadInk(key){
+  try {
+    const d = await api(`/api/ink?key=${encodeURIComponent(key)}`);
+    const mine = INK[key] || {};
+    INK[key] = Object.assign({}, d);
+    for (const [k, v] of PEN.dirty) if (v[0] === key) INK[key][v[1]] = mine[v[1]];   // keep unsaved local ink
+  } catch (e) {}
+  repaintAll();
+}
+function saveInkSoon(key, p){
+  PEN.dirty.set(key + ":" + p, [key, p]);
+  clearTimeout(PEN.timer); PEN.timer = setTimeout(flushInk, 700);
+}
+async function flushInk(){
+  clearTimeout(PEN.timer);
+  const items = [...PEN.dirty.values()]; PEN.dirty.clear();
+  for (const [key, p] of items){
+    try { await api("/api/ink", {key, page:+p, strokes:strokesOf(key, p)}); }
+    catch (e){ PEN.dirty.set(key + ":" + p, [key, p]); toast("Couldn't save your ink: " + esc(e.message)); }
+  }
+}
+function mount(el, key, p, dir){
+  const leaf = document.createElement("div");
+  leaf.className = "leaf"; leaf.dataset.key = key; leaf.dataset.p = p;
+  leaf.style.width = el.style.width; leaf.style.height = el.style.height;
+  el.classList.remove("in-next", "in-prev");
+  leaf.append(el);
+  if (dir) leaf.classList.add("in-" + dir);
+  $("#stage").replaceChildren(leaf);
+  fitLeaf(leaf);
+  if (strokesOf(key, p).length) inkCanvas(leaf, key, p);
+}
+function fitLeaf(leaf = $("#stage .leaf")){        // with the notes panel open, shrink the page to fit beside it
+  if (!leaf) return;
+  const st = $("#stage"), w = parseFloat(leaf.style.width), h = parseFloat(leaf.style.height);
+  const k = NOTES.open ? Math.min(1, (st.clientWidth - 16) / w, (st.clientHeight - 16) / h) : 1;
+  leaf.style.transform = k < 1 ? `scale(${k.toFixed(4)})` : "";
+}
+function swapImg(d, img){ d.replaceChildren(img, ...d.querySelectorAll("canvas")); }
+function inkFor(d){ const p = +d.dataset.p; if (strokesOf(R.key, p).length) inkCanvas(d, R.key, p); }
+function inkCanvas(host, key, p){
+  let c = host.querySelector("canvas.ink");
+  if (!c){ c = document.createElement("canvas"); c.className = "ink"; host.append(c); }
+  const W = Math.round(host.clientWidth * R.dpr), H = Math.round(host.clientHeight * R.dpr);
+  if (c.width !== W || c.height !== H){ c.width = W; c.height = H; }
+  paintInk(c, key, p);
+  return c;
+}
+function liveCanvas(host){
+  let c = host.querySelector("canvas.live");
+  if (!c){ c = document.createElement("canvas"); c.className = "live"; host.append(c); }
+  const W = Math.round(host.clientWidth * R.dpr), H = Math.round(host.clientHeight * R.dpr);
+  if (c.width !== W || c.height !== H){ c.width = W; c.height = H; }
+  return c;
+}
+function hostsFor(key, p){
+  const out = [...document.querySelectorAll(`#stage .leaf[data-p="${p}"]`)].filter(l => l.dataset.key === key);
+  if (R.mode === "scroll" && key === R.key){ const d = $("#roll").children[p - 1]; if (d && d.dataset.state === "on") out.push(d); }
+  return out;
+}
+function repaint(key, p){ for (const h of hostsFor(key, p)) inkCanvas(h, key, p); }
+function repaintAll(){
+  const l = $("#stage .leaf"); if (l) repaint(l.dataset.key, +l.dataset.p);
+  if (R.mode === "scroll") for (const d of document.querySelectorAll("#roll .pg[data-state=on]")) inkFor(d);
+}
+function paintInk(c, key, p){
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height);
+  for (const st of strokesOf(key, p)) drawStroke(g, st, c.width, c.height);
+}
+const penW = (st, q, W) => Math.max(0.7, st.w * W * (0.35 + 0.9 * q));
+// A stroke is drawn as pieces: each runs between the midpoints of its neighbouring samples with the sample
+// itself as the curve's control point, so it's smooth, and each piece takes that sample's pressure.
+function piece(g, st, k, W, H){                     // k = 1 .. n-2
+  const P = st.pts, a = k === 1 ? P[0] : mid(P[k - 1], P[k]), b = mid(P[k], P[k + 1]);
+  g.lineWidth = penW(st, P[k][2], W);
+  g.beginPath(); g.moveTo(a[0] * W, a[1] * H); g.quadraticCurveTo(P[k][0] * W, P[k][1] * H, b[0] * W, b[1] * H); g.stroke();
+}
+function tail(g, st, W, H, extra = []){             // last piece: to the newest sample, plus any predicted ones
+  const P = st.pts, n = P.length;
+  if (!n) return;
+  const a = n >= 2 ? (n === 2 ? P[0] : mid(P[n - 2], P[n - 1])) : P[0];
+  g.lineWidth = penW(st, P[n - 1][2], W);
+  g.beginPath(); g.moveTo(a[0] * W, a[1] * H); g.lineTo(P[n - 1][0] * W, P[n - 1][1] * H);
+  for (const q of extra) g.lineTo(q[0] * W, q[1] * H);
+  if (n === 1 && !extra.length) g.lineTo(P[0][0] * W + 0.01, P[0][1] * H);
+  g.stroke();
+}
+const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+function hlPath(g, st, W, H){
+  const P = st.pts;
+  g.beginPath(); g.moveTo(P[0][0] * W, P[0][1] * H);
+  for (let i = 1; i < P.length - 1; i++){ const m = mid(P[i], P[i + 1]); g.quadraticCurveTo(P[i][0] * W, P[i][1] * H, m[0] * W, m[1] * H); }
+  g.lineTo(P[P.length - 1][0] * W + (P.length === 1 ? 0.01 : 0), P[P.length - 1][1] * H);
+}
+function drawStroke(g, st, W, H){
+  if (!st.pts.length) return;
+  g.save(); g.lineCap = g.lineJoin = "round"; g.strokeStyle = st.c;
+  if (st.t === "hl"){ g.globalCompositeOperation = "multiply"; g.globalAlpha = .42; g.lineWidth = st.w * W; hlPath(g, st, W, H); g.stroke(); }
+  else { for (let k = 1; k <= st.pts.length - 2; k++) piece(g, st, k, W, H); tail(g, st, W, H); }
+  g.restore();
+}
+function inking(on){ document.body.classList.toggle("inking", on); }
+// Pages mode lets fingers pinch-zoom (touch-action: pinch-zoom), and Safari then won't hand a Pencil stroke on the page
+// to the page. The Pencil's hover arrives before the nib lands, so the page switches to touch-action: none while
+// the Pencil is near, and back 2.5 s after it leaves.
+function penNear(){
+  document.body.classList.add("pen"); clearTimeout(PEN.near);
+  PEN.near = setTimeout(() => PEN.active ? penNear() : document.body.classList.remove("pen"), 2500);
+}
+function penLike(e){ return e.pointerType === "pen" || (PEN.finger && document.body.classList.contains("inking")); }
+function point(e, r){
+  const tilt = e.altitudeAngle !== undefined && e.pointerType === "pen" ? Math.max(0, .9 - e.altitudeAngle) * .9 : 0;   // tilted Pencil: broader line
+  const q = e.pointerType === "pen" ? (e.pressure || .5) : .5;
+  return [+((e.clientX - r.left) / r.width).toFixed(5), +((e.clientY - r.top) / r.height).toFixed(5), +Math.min(1, q * (1 + tilt)).toFixed(3)];
+}
+function eraseAt(a, pt){
+  const list = strokesOf(a.key, a.p), keep = [];
+  for (const st of list){
+    const hit = st.pts.some(q => Math.hypot((q[0] - pt[0]) * 1.0, (q[1] - pt[1]) * 1.3) < .014);
+    if (hit) a.erased.push(st); else keep.push(st);
+  }
+  if (keep.length !== list.length){ setStrokes(a.key, a.p, keep); paintInk(a.c, a.key, a.p); }
+}
+document.addEventListener("pointerdown", e => {
+  if (e.pointerType === "pen"){ PEN.palmUntil = Date.now() + 800; penNear(); }
+  if (!penLike(e)) return;
+  const host = e.target.closest && e.target.closest("#stage .leaf, #roll .pg[data-state=on]");
+  if (!host) return;
+  e.preventDefault(); e.stopPropagation();
+  if (e.pointerType === "pen") inking(true);          // the Pencil's first touch brings up the tools
+  const key = host.dataset.key || R.key, p = +host.dataset.p;
+  const c = inkCanvas(host, key, p), live = liveCanvas(host), r = host.getBoundingClientRect();
+  const tool = PEN.tool;
+  PEN.active = {id:e.pointerId, host, key, p, c, live, r, tool, erased:[], t0:performance.now(),
+                st:{t:tool === "hl" ? "hl" : "pen", c:PEN.color, w:WIDTH[tool === "hl" ? "hl" : "pen"], pts:[]}};
+  try { host.setPointerCapture(e.pointerId); } catch (_) {}
+  $("#nib").classList.remove("on");
+  addPoints(e);
+}, true);
+function addPoints(e){
+  const a = PEN.active, evs = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+  const W = a.c.width, H = a.c.height, g = a.c.getContext("2d"), st = a.st;
+  for (const ev of evs){
+    const pt = point(ev, a.r);
+    if (a.tool === "erase"){ eraseAt(a, pt); continue; }
+    const last = st.pts[st.pts.length - 1];
+    if (last && Math.abs(last[0] - pt[0]) < 1e-4 && Math.abs(last[1] - pt[1]) < 1e-4) continue;
+    st.pts.push(pt);
+    if (st.t === "pen" && st.pts.length >= 3){ g.save(); g.lineCap = g.lineJoin = "round"; g.strokeStyle = st.c; piece(g, st, st.pts.length - 2, W, H); g.restore(); }
+  }
+  if (a.tool === "erase") return;
+  const lg = a.live.getContext("2d");
+  lg.clearRect(0, 0, W, H); lg.save(); lg.lineCap = lg.lineJoin = "round"; lg.strokeStyle = st.c;
+  if (st.t === "hl"){ lg.globalAlpha = .42; lg.lineWidth = st.w * W; hlPath(lg, st, W, H); lg.stroke(); }
+  else {
+    const pred = e.getPredictedEvents ? e.getPredictedEvents().slice(0, 3).map(ev => point(ev, a.r)) : [];
+    tail(lg, st, W, H, pred);
+  }
+  lg.restore();
+}
+document.addEventListener("pointermove", e => {
+  const a = PEN.active;
+  if (a && e.pointerId === a.id){ e.preventDefault(); PEN.palmUntil = Date.now() + 800; addPoints(e); return; }
+  if (e.pointerType === "pen") penNear();
+  if (e.pointerType === "pen" && e.buttons === 0){        // Apple Pencil hover: a dot shows where the nib will land
+    const n = $("#nib"), w = PEN.tool === "hl" ? 18 : PEN.tool === "erase" ? 22 : 8;
+    n.style.left = e.clientX + "px"; n.style.top = e.clientY + "px";
+    n.style.width = n.style.height = w + "px"; n.style.margin = `-${w / 2}px 0 0 -${w / 2}px`;
+    n.style.background = PEN.tool === "erase" ? "rgba(255,255,255,.35)" : PEN.color;
+    n.classList.add("on"); clearTimeout(PEN.hover); PEN.hover = setTimeout(() => n.classList.remove("on"), 400);
+  }
+}, true);
+function endStroke(e){
+  const a = PEN.active;
+  if (!a || e.pointerId !== a.id) return;
+  PEN.active = null; PEN.palmUntil = Date.now() + 600;
+  a.live.getContext("2d").clearRect(0, 0, a.live.width, a.live.height);
+  if (a.tool === "erase"){
+    if (a.erased.length){ PEN.undo.push({key:a.key, p:a.p, removed:a.erased}); saveInkSoon(a.key, a.p); }
+    return;
+  }
+  const st = a.st;
+  if (!st.pts.length) return;
+  const g = a.c.getContext("2d");
+  if (st.t === "hl") drawStroke(g, st, a.c.width, a.c.height);
+  else { g.save(); g.lineCap = g.lineJoin = "round"; g.strokeStyle = st.c; tail(g, st, a.c.width, a.c.height); g.restore(); }
+  setStrokes(a.key, a.p, [...strokesOf(a.key, a.p), st]);
+  PEN.undo.push({key:a.key, p:a.p, added:st});
+  if (PEN.undo.length > 200) PEN.undo.shift();
+  perf("ink_stroke", performance.now() - a.t0, {kb:st.pts.length});
+  saveInkSoon(a.key, a.p);
+}
+document.addEventListener("pointerup", endStroke, true);
+document.addEventListener("pointercancel", endStroke, true);
+// Stop Safari from scrolling or selecting while the Pencil writes (fingers still scroll).
+for (const t of ["touchstart", "touchmove"]) document.addEventListener(t, e => {
+  const onPage = e.target.closest && e.target.closest("#stage .leaf, #roll .pg");
+  if (PEN.active || (onPage && [...e.touches].some(x => x.touchType === "stylus"))) e.preventDefault();
+}, {passive:false});
+function undoInk(){
+  const u = PEN.undo.pop();
+  if (!u){ toast("Nothing to undo"); return; }
+  const list = strokesOf(u.key, u.p);
+  setStrokes(u.key, u.p, u.added ? list.filter(s => s !== u.added) : [...list, ...u.removed]);
+  repaint(u.key, u.p); saveInkSoon(u.key, u.p);
+}
+$("#tools").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.tool){
+    PEN.tool = b.dataset.tool; if (b.dataset.c) PEN.color = b.dataset.c;
+    document.querySelectorAll("#tools [data-tool]").forEach(x => x.classList.toggle("on", x === b));
+  } else if (b.id === "t-undo") undoInk();
+  else if (b.id === "t-finger"){ PEN.finger = !PEN.finger; b.classList.toggle("on", PEN.finger); toast(PEN.finger ? "☝︎ Your finger draws too (swipe on the bars to turn pages)" : "Only the Pencil draws"); }
+  else if (b.id === "t-notes") toggleNotes();
+  else if (b.id === "t-close"){ inking(false); PEN.finger = false; $("#t-finger").classList.remove("on"); }
+});
+$("#b-ink").onclick = () => inking(!document.body.classList.contains("inking"));
+
+/* ───────────── chapter notes: the chapter's notes.md, beside the page ───────────── */
+const NOTES = {open:false, key:null, page:1, path:"", mtime:null, base:"", dirty:false, timer:null, follow:null};
+const nState = t => { $("#n-state").textContent = t; };
+async function loadNotes(){
+  const key = R.key, page = R.page;
+  try {
+    const d = await api(`/api/notes?key=${encodeURIComponent(key)}&page=${page}`);
+    if (d.path === NOTES.path && NOTES.dirty) return;   // same chapter, still typing: keep the text
+    if (NOTES.dirty) await saveNotes();
+    Object.assign(NOTES, {key, page, path:d.path, mtime:d.mtime, base:d.text, dirty:false});
+    $("#n-title").textContent = d.title; $("#n-text").value = d.text;
+    $("#n-foot").textContent = `${d.path} · saves as you write · Q: and A: lines become flashcards`;
+    nState(d.text.trim() ? "" : "empty");
+  } catch (e){ nState("offline"); }
+}
+async function saveNotes(force){
+  if (!NOTES.dirty && !force) return;
+  clearTimeout(NOTES.timer);
+  const text = $("#n-text").value;
+  NOTES.dirty = false; nState("saving…");
+  const r = await fetch("/api/notes", {method:"POST", headers:{"Content-Type":"application/json", "X-Quest-Token":TOKEN},
+                                      body:JSON.stringify({key:NOTES.key, page:NOTES.page, text, mtime:force ? null : NOTES.mtime})});
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 409){                            // edited on the Mac in the meantime: never lose either side
+    if (confirm("These notes were changed on your Mac.\n\nOK keeps what you wrote on the iPad.\nCancel keeps both: the Mac's version, with yours below it.")) return saveNotes(true);
+    // three-way merge: usually both sides only added to the end, so keep both additions in order
+    const base = NOTES.base || "", theirs = j.text || "";
+    $("#n-text").value = theirs.startsWith(base) && text.startsWith(base) ? theirs + text.slice(base.length)
+      : !text.trim() || theirs.includes(text.trim()) ? theirs
+      : `${theirs.trimEnd()}\n\n## ✍️ From the iPad (merge me)\n${text.trim()}\n`;
+    NOTES.mtime = j.mtime; NOTES.base = theirs; NOTES.dirty = true; nState("merged with the Mac's version");
+    return saveNotes();
+  }
+  if (!r.ok){ NOTES.dirty = true; nState("not saved: " + (j.error || r.status)); return; }
+  NOTES.mtime = j.mtime; NOTES.base = text; nState(`saved · ${j.lines} line${j.lines === 1 ? "" : "s"}`);
+}
+function toggleNotes(on = !NOTES.open){
+  NOTES.open = on;
+  document.body.classList.toggle("notes-open", on);
+  if (on){ loadNotes(); document.body.classList.remove("hide"); } else saveNotes();
+  setTimeout(fitLeaf, 300);
+}
+function notesFollow(){                            // turned into another chapter: save, then show its notes
+  clearTimeout(NOTES.follow); NOTES.follow = setTimeout(loadNotes, 400);
+}
+function insertText(t, caret){
+  const ta = $("#n-text"), a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? a;
+  ta.value = ta.value.slice(0, a) + t + ta.value.slice(b);
+  const pos = a + (caret ?? t.length);
+  ta.focus(); ta.setSelectionRange(pos, pos);
+  ta.dispatchEvent(new Event("input"));
+}
+$("#n-text").addEventListener("input", () => {
+  NOTES.dirty = true; nState("editing…");
+  clearTimeout(NOTES.timer); NOTES.timer = setTimeout(saveNotes, 900);
+});
+$("#notes").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "n-close") return toggleNotes(false);
+  const lead = () => { const v = $("#n-text").value, a = $("#n-text").selectionStart ?? v.length; return a && v[a - 1] !== "\n" ? "\n" : ""; };
+  if (b.dataset.ins === "card"){ const L = lead(); insertText(L + "Q: \nA: \n", L.length + 3); }
+  else if (b.dataset.ins === "h"){ const L = lead(); insertText(L + "## "); }
+  else if (b.dataset.ins === "li"){ const L = lead(); insertText(L + "- "); }
+  else if (b.id === "n-ink"){
+    b.disabled = true; nState("reading your handwriting…");
+    try {
+      await flushInk();
+      const r = await api("/api/transcribe", {key:R.key, page:R.page});
+      if (!r.text.trim()){ toast("No handwriting on this page yet: write on the page with your Pencil first."); nState(""); }
+      else {                                          // goes at the end, so it never lands inside a flashcard
+        const ta = $("#n-text"); ta.setSelectionRange(ta.value.length, ta.value.length);
+        insertText(`${lead()}${ta.value.trim() ? "\n" : ""}> ✍️ p.${label(R.page)}\n${r.text.trim()}\n`);
+        toast(`✍️ Read your handwriting in ${r.ms} ms`); perf("transcribe", r.ms);
+      }
+    } catch (err){ toast("Couldn't read the handwriting: " + esc(err.message)); nState(""); }
+    b.disabled = false;
+  }
+});
+$("#b-notes").onclick = () => toggleNotes();
+addEventListener("pagehide", () => { flushInk(); saveNotes(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden){ flushInk(); saveNotes(); } });
 
 /* boot */
 (async () => {
@@ -469,6 +987,10 @@ addEventListener("pageshow", e => { if (e.persisted) connect(); });
   });
   if (!R.ticket) await openBook(key, +q.get("page") || 0);
   await state;
+  // links can open straight into a view: ?notes=1 (notes panel), ?tools=1 (Pencil tools), ?hud=1 (timings)
+  if (q.get("tools")) inking(true);
+  if (q.get("hud")){ document.body.classList.add("hud"); drawHud(); }
+  if (q.get("notes")){ toggleNotes(true); return; }
   setTimeout(() => { document.body.classList.add("hide"); lastY = scrollY; }, 3500);
 })();
 </script>
